@@ -1,0 +1,68 @@
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+}
+
+.tutorial-spotlight {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+  transition: top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease;
+  pointer-events: none;
+}
+
+.tutorial-card {
+  position: fixed;
+  z-index: 301;
+  width: min(320px, calc(100vw - 32px));
+  padding: 1.6rem 1.4rem 1.4rem;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 4px 18px 5px 16px;
+  box-shadow: 5px 6px 0 var(--shadow);
+  transition: top 0.3s ease, bottom 0.3s ease, left 0.3s ease;
+}
+
+.tutorial-skip {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.9rem;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tutorial-skip:hover { color: var(--ink-dim); }
+
+.tutorial-step {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--rust);
+  margin-bottom: 0.25rem;
+}
+
+.tutorial-card h2 {
+  font-size: 1.3rem;
+  line-height: 1.25;
+  margin-bottom: 0.5rem;
+}
+
+.tutorial-text {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  margin-bottom: 1.15rem;
+}
+
+.tutorial-next {
+  width: 100%;
+  justify-content: center;
+}

@@ -1,0 +1,38 @@
+.subscription-page { max-width: 1040px; }
+.subscription-page > h1 { margin: 0.2rem 0 0.6rem; }
+.subscription-lead { max-width: 36rem; }
+.subscription-note, .subscription-error { margin-top: 1rem; max-width: 36rem; }
+
+.subscription-plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem;
+  margin-top: 2.5rem;
+  list-style: none;
+}
+.sub-plan { display: flex; flex-direction: column; height: 100%; }
+.sub-plan.note-card > * + * { margin-top: 0; }
+.sub-plan.is-current { border-width: 2.5px; border-color: var(--rust); }
+.sub-plan h2 { font-size: 1.5rem; }
+.sub-price { margin: 0.4rem 0 1rem; color: var(--ink-dim); }
+.sub-price span { font-family: var(--font-display); font-size: 2.3rem; font-weight: 600; color: var(--ink); }
+.sub-features { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.4rem; padding-top: 1rem; list-style: none; border-top: 1px dashed var(--line); }
+.sub-features li { position: relative; padding-left: 1.5rem; }
+.sub-features li::before { content: '✓'; position: absolute; left: 0; top: -0.15rem; font-family: var(--font-hand); font-weight: 700; font-size: 1.3rem; color: var(--ok); }
+.sub-plan .btn { width: 100%; }
+.sub-plan .plan-badge {
+  position: absolute;
+  top: -0.9rem;
+  right: 1rem;
+  padding: 0.05rem 0.7rem;
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 1.3rem;
+  background: var(--marker);
+  transform: rotate(3deg);
+}
+.subscription-back { margin-top: 2.5rem; }
+
+@media (max-width: 860px) {
+  .subscription-plans { grid-template-columns: 1fr; max-width: 460px; }
+}

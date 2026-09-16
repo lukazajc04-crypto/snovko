@@ -1,0 +1,105 @@
+const express = require('express');
+const multer = require('multer');
+const db = require('../db/db');
+const { requireAuth } = require('../middleware/auth');
+const { generateMaterial, GenerationError } = require('../services/claude');
+const { extractFromFile, ExtractError } = require('../services/extract');
+const { findChildForUser, childNotFoundMessage } = require('../services/access');
+
+const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+const COST = 2;
+const MIN_TEXT = 30;
+const MAX_TEXT = 30000;
+
+const getBalance = db.prepare('SELECT balance FROM credits WHERE user_id = ?');
+const deductCredits = db.prepare(
+  'UPDATE credits SET balance = balance - ? WHERE user_id = ? AND balance >= ?'
+);
+const insertGeneration = db.prepare(
+  'INSERT INTO generations (child_id, subject, content_json) VALUES (?, ?, ?)'
+);
+const findGeneration = db.prepare('SELECT id, created_at FROM generations WHERE id = ?');
+
+const chargeAndSave = db.transaction((parentId, childId, subject, material) => {
+  const { changes } = deductCredits.run(COST, parentId, COST);
+  if (changes === 0) return null;
+  const { lastInsertRowid } = insertGeneration.run(childId, subject, JSON.stringify(material));
+  return lastInsertRowid;
+});
+
+function notEnoughCredits(res, balance) {
+  return res.status(402).json({
+    error: `Za generiranje potrebuješ ${COST} kredita, na voljo imaš ${balance}.`,
+    code: 'NO_CREDITS',
+  });
+}
+
+router.post('/', requireAuth, upload.single('file'), async (req, res) => {
+  const subject = String(req.body?.subject || '').trim();
+  if (!subject) {
+    return res.status(400).json({ error: 'Izberi predmet.' });
+  }
+
+  const child = findChildForUser(req.user, req.body?.child_id);
+  if (!child) {
+    return res.status(404).json({ error: childNotFoundMessage(req.user) });
+  }
+
+  let source;
+  try {
+    source = req.file ? await extractFromFile(req.file) : { text: String(req.body?.text || '') };
+  } catch (err) {
+    if (err instanceof ExtractError) return res.status(err.status).json({ error: err.message });
+    throw err;
+  }
+
+  if (!source.image) {
+    source.text = source.text.trim();
+    if (source.text.length < MIN_TEXT) {
+      return res.status(400).json({
+        error: req.file
+          ? 'V datoteki ni dovolj besedila. Poskusi s fotografijo strani.'
+          : `Snov mora imeti vsaj ${MIN_TEXT} znakov.`,
+      });
+    }
+    if (source.text.length > MAX_TEXT) {
+      return res.status(400).json({
+        error: `Snov je predolga (${source.text.length} znakov, največ ${MAX_TEXT}). Razdeli jo na manjše dele.`,
+      });
+    }
+  }
+
+  const balance = getBalance.get(child.parent_id)?.balance ?? 0;
+  if (balance < COST) return notEnoughCredits(res, balance);
+
+  let material;
+  try {
+    material = await generateMaterial({ ...source, subject, grade: child.grade });
+  } catch (err) {
+    if (err instanceof GenerationError) {
+      return res.status(err.status).json({ error: err.message });
+    }
+    console.error('Napaka pri generiranju:', err);
+    return res.status(500).json({ error: 'Pri generiranju je prišlo do napake. Poskusi znova.' });
+  }
+
+  // Krediti se odštejejo šele po uspešni generaciji; ponovno preverjanje ujame sočasne zahteve
+  const generationId = chargeAndSave(child.parent_id, child.id, subject, material);
+  if (generationId === null) {
+    return notEnoughCredits(res, getBalance.get(child.parent_id)?.balance ?? 0);
+  }
+
+  const saved = findGeneration.get(generationId);
+  res.status(201).json({
+    id: saved.id,
+    child_id: child.id,
+    subject,
+    created_at: saved.created_at,
+    credits: getBalance.get(child.parent_id).balance,
+    content: material,
+  });
+});
+
+module.exports = router;

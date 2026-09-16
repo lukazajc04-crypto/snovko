@@ -1,0 +1,59 @@
+CREATE TABLE IF NOT EXISTS users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  email         TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT    NOT NULL,
+  name          TEXT    NOT NULL,
+  role          TEXT    NOT NULL DEFAULT 'parent' CHECK (role IN ('parent', 'child')),
+  stripe_customer_id TEXT UNIQUE,
+  subscription_id    TEXT UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS children (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id   INTEGER UNIQUE REFERENCES users(id) ON DELETE SET NULL,
+  name      TEXT    NOT NULL,
+  grade     INTEGER NOT NULL CHECK (grade BETWEEN 1 AND 9),
+  subjects    TEXT  NOT NULL DEFAULT '[]',
+  access_code TEXT  NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS credits (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  balance    INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+  plan       TEXT    CHECK (plan IN ('basic', 'standard', 'family')),
+  reset_date TEXT
+);
+
+CREATE TABLE IF NOT EXISTS generations (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  child_id     INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  subject      TEXT    NOT NULL,
+  content_json TEXT    NOT NULL,
+  created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS quiz_results (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  generation_id INTEGER NOT NULL REFERENCES generations(id) ON DELETE CASCADE,
+  score         INTEGER NOT NULL CHECK (score >= 0),
+  total         INTEGER NOT NULL CHECK (total > 0),
+  created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS worksheet_checks (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  child_id    INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  subject     TEXT    NOT NULL,
+  image_file  TEXT    NOT NULL,
+  result_json TEXT    NOT NULL,
+  correct     INTEGER NOT NULL,
+  total       INTEGER NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_children_parent   ON children(parent_id);
+CREATE INDEX IF NOT EXISTS idx_checks_child      ON worksheet_checks(child_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_generations_child ON generations(child_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_quiz_generation   ON quiz_results(generation_id);

@@ -1,0 +1,48 @@
+.page-onboarding { max-width: 620px; }
+
+.onboarding-progress { margin-bottom: 2.5rem; }
+.step-track { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 0.6rem; list-style: none; }
+.step-track li { display: flex; flex-direction: column; gap: 0.35rem; }
+.step-bar { height: 0.5rem; background: transparent; border: 1.5px solid var(--ink); border-radius: 999px; }
+.step-track li.is-done .step-bar { background: var(--rust); }
+.step-label { font-size: 0.85rem; color: var(--ink-faint); }
+.step-track li.is-done .step-label { color: var(--ink); font-weight: 500; }
+
+.page-onboarding .note-card h1 { font-size: clamp(1.7rem, 4vw, 2.2rem); }
+.page-onboarding .lead { font-size: 1.05rem; }
+
+.subject-grid { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1.25rem; }
+.subject-chip {
+  padding: 0.45rem 0.9rem;
+  font: 500 0.95rem var(--font-ui);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.subject-chip:hover { border-color: var(--ink); }
+.subject-chip.is-selected { background: var(--marker2); border-color: var(--ink); }
+.subject-chip:focus-visible { outline: 2px solid var(--rust); outline-offset: 2px; }
+
+.onboarding-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.75rem; margin-top: 1.75rem; }
+
+.how-list { display: flex; flex-direction: column; gap: 1.4rem; margin-top: 1.25rem; list-style: none; }
+.how-list li { display: flex; gap: 1rem; }
+.how-number { font-family: var(--font-hand); font-weight: 700; font-size: 2rem; line-height: 1; color: var(--rust); }
+.how-list h3 { font-weight: 600; margin-bottom: 0.25rem; }
+.how-list p { font-family: var(--font-serif); color: var(--ink-dim); }
+
+.access-code {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  font-family: var(--font-ui) !important;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--ink) !important;
+  background: var(--marker);
+  border: 1.5px solid var(--ink);
+  transform: rotate(-1deg);
+}

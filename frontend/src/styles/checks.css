@@ -1,0 +1,156 @@
+.check-page { max-width: 1180px; }
+
+.check-header { max-width: 760px; margin-bottom: 2.25rem; }
+.check-header h1 { margin: 0.25rem 0 0.4rem; }
+.check-score {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  line-height: 1.1;
+  color: var(--rust);
+  transform: rotate(-1.5deg);
+  transform-origin: left;
+}
+.check-summary { margin-top: 0.75rem; font-family: var(--font-serif); font-size: 1.12rem; line-height: 1.65; }
+
+.check-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: clamp(2rem, 4vw, 3.5rem);
+  align-items: start;
+}
+
+/* ---------- List z oznakami ---------- */
+.sheet { position: sticky; top: 1rem; }
+.sheet-frame {
+  position: relative;
+  container-type: inline-size;
+  line-height: 0;
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  box-shadow: var(--card-shadow);
+}
+.sheet-frame img { display: block; width: 100%; height: auto; }
+
+.sheet-mark {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max(2.4rem, 6.5cqw);
+  height: max(2.4rem, 6.5cqw);
+  padding: 0;
+  font: inherit;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  /* Oznaka se začne desno od točke, ki jo vrne AI, da ne prekrije otrokovega odgovora */
+  transform: translate(10%, -50%) rotate(-6deg);
+  transition: transform 0.15s;
+}
+.sheet-mark:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sheet-mark.is-active { z-index: 2; transform: translate(10%, -50%) rotate(-6deg) scale(1.2); }
+
+.mark-symbol {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: max(2.2rem, 6.5cqw);
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.9), 0 0 6px rgba(255, 255, 255, 0.7);
+}
+.sheet-mark.is-correct .mark-symbol { color: #2f7a55; }
+.sheet-mark.is-wrong .mark-symbol { color: #c0392b; }
+.sheet-mark.is-unclear .mark-symbol { color: var(--ink-dim); }
+
+.mark-number {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.45rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.2rem;
+  font: 600 0.7rem/1.15rem var(--font-ui);
+  color: var(--on-rust);
+  background: var(--ink);
+  border-radius: 999px;
+  transform: rotate(6deg);
+}
+
+.mark-solution {
+  position: absolute;
+  top: 50%;
+  padding: 0.05rem 0.45rem 0.15rem;
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: max(1.3rem, 3.6cqw);
+  line-height: 1.15;
+  color: #c0392b;
+  white-space: nowrap;
+  background: rgba(251, 243, 210, 0.92);
+  border-radius: 3px;
+  box-shadow: 0 1px 2px var(--shadow);
+  transform: translateY(-50%) rotate(6deg);
+}
+.mark-solution.side-right { left: calc(100% + 0.5rem); }
+.mark-solution.side-left { right: calc(100% + 0.1rem); }
+
+.marks-hidden .sheet-mark { display: none; }
+
+.sheet-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+.marks-toggle { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--ink); cursor: pointer; }
+.marks-toggle input { accent-color: var(--rust); }
+
+/* ---------- Seznam nalog ---------- */
+.task-card.note-card { padding: 1.6rem 1.4rem 1rem; }
+.task-card.note-card > * + * { margin-top: 0; }
+.task-card h2 { margin-bottom: 0.75rem; font-size: 1.35rem; }
+.task-list { list-style: none; }
+.task-item {
+  display: flex;
+  gap: 0.8rem;
+  margin: 0 -0.6rem;
+  padding: 0.85rem 0.6rem;
+  border-top: 1px dashed var(--line);
+  border-radius: var(--radius);
+  transition: background-color 0.15s;
+}
+.task-item:first-child { border-top: none; }
+.task-item.is-active { background: rgba(242, 201, 76, 0.22); }
+.task-badge {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  font: 600 0.8rem/1.5rem var(--font-ui);
+  text-align: center;
+  color: var(--on-rust);
+  background: var(--ink);
+  border-radius: 50%;
+}
+.task-body { min-width: 0; }
+.task-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; }
+.task-status { font-family: var(--font-hand); font-weight: 700; font-size: 1.3rem; line-height: 1; }
+.task-item.is-correct .task-status { color: #2f7a55; }
+.task-item.is-wrong .task-status { color: #c0392b; }
+.task-item.is-unclear .task-status { color: var(--ink-dim); }
+.task-number { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint); }
+.task-question { margin-top: 0.3rem; font-family: var(--font-serif); line-height: 1.5; }
+.task-answer { margin-top: 0.3rem; font-size: 0.9rem; color: var(--ink-dim); }
+.task-answer span { font-weight: 600; color: var(--ink); }
+.task-solution { margin-top: 0.35rem; font-family: var(--font-hand); font-weight: 700; font-size: 1.35rem; line-height: 1.2; color: #c0392b; }
+.task-explanation { margin-top: 0.2rem; font-family: var(--font-serif); font-size: 0.95rem; line-height: 1.55; color: var(--ink-dim); }
+
+.check-back { margin-top: 2.5rem; }
+
+@media (max-width: 900px) {
+  .check-grid { grid-template-columns: 1fr; }
+  .sheet { position: static; }
+}
