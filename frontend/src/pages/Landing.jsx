@@ -113,8 +113,8 @@ export default function Landing() {
             Vaš otrok dobi <span className="hl">razlago iz šolske snovi</span> v 2 minutah
           </h1>
           <p className="lead">
-            Fotografira stran iz zvezka. AI naredi razlago, kviz in kartončke prilagojene razredu. Brez čakanja na
-            inštruktorja.
+            Fotografira stran iz zvezka. AI naredi razlago, kviz in kartončke prilagojene razredu — brez pisanja
+            poizvedb, brez čakanja na inštruktorja.
           </p>
           <div className="hero-actions">
             <Link to="/register" className="btn btn-primary btn-large">
@@ -124,6 +124,20 @@ export default function Landing() {
               Poglej cenik ↓
             </a>
           </div>
+          <ul className="hero-reassure">
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4.5 12.5l5 5 10-11" />
+              </svg>
+              Ni vam treba znati pisati poizvedb za AI — samo slikate.
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4.5 12.5l5 5 10-11" />
+              </svg>
+              Brez dnevnih omejitev brezplačnih orodij — mesečni bazen kreditov za vso družino.
+            </li>
+          </ul>
         </div>
         <HeroExample />
       </section>
