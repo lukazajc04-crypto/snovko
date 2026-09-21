@@ -18,7 +18,7 @@
 /* Napredek */
 .progress-stats {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 1.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px dashed var(--line);
@@ -49,7 +49,40 @@
 .trend-chip.is-flat { color: var(--ink-faint); background: rgba(43, 36, 24, 0.05); }
 
 .totals-list { list-style: none; display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; color: var(--ink-dim); }
+.totals-list.totals-row { flex-direction: row; flex-wrap: wrap; gap: 0.4rem 2rem; }
 .totals-value { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; color: var(--ink); margin-right: 0.3rem; }
+
+/* Zložljive podrobnosti */
+.details-card { margin-top: 1.25rem; }
+.parent-grid .details-card { padding: 0; }
+.details-block summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 1.1rem 1.5rem;
+  font-family: var(--font-display);
+  cursor: pointer;
+  list-style: none;
+}
+.details-block summary::-webkit-details-marker { display: none; }
+.details-block summary::after {
+  content: '▾';
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: var(--ink-faint);
+  transition: transform 0.15s;
+}
+.details-block[open] summary::after { transform: rotate(180deg); }
+.details-block summary:hover .details-title { text-decoration: underline; text-underline-offset: 3px; }
+.details-block summary:focus-visible { outline: 2px solid var(--rust); outline-offset: -3px; }
+.details-title { font-size: 1.2rem; font-weight: 600; }
+.details-hint { font-family: var(--font-ui); font-size: 0.8rem; color: var(--ink-faint); }
+.details-body { padding: 0 1.5rem 1.5rem; border-top: 1px dashed var(--line); }
+.details-body .chart-title:first-child { margin-top: 1.2rem; }
+
+/* Značke pod aktivnostjo */
+.parent-badges { margin-top: 2.5rem; }
+.parent-badges h2 { margin-bottom: 0.9rem; }
 
 /* Obvladovanje po predmetih — ena barva, dolžina nosi vrednost */
 .subject-list { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }

@@ -168,24 +168,7 @@ export default function ParentDashboard() {
                   <span className="stat-label">{dayLabel(child.streak)}</span>
                   {child.streak === 0 && <span className="trend-base">zadnje dni brez aktivnosti</span>}
                 </div>
-                <div className="stat">
-                  <span className="stat-label stat-label-top">Skupaj doslej</span>
-                  <ul className="totals-list">
-                    <li>
-                      <span className="totals-value">{child.totals.gradiva}</span> gradiv
-                    </li>
-                    <li>
-                      <span className="totals-value">{child.totals.kvizi}</span> kvizov
-                    </li>
-                    <li>
-                      <span className="totals-value">{child.totals.pregledi}</span> pregledanih listov
-                    </li>
-                  </ul>
-                </div>
               </div>
-
-              <h3 className="chart-title">Obvladovanje po predmetih</h3>
-              <SubjectBars subjects={child.subjects} />
 
               <div className="weak-block">
                 <h3 className="chart-title">Najšibkejše teme</h3>
@@ -206,26 +189,47 @@ export default function ParentDashboard() {
                   </ol>
                 )}
               </div>
-
-              <h3 className="chart-title">Aktivnost v zadnjih 7 dneh</h3>
-              <WeekChart week={child.week} />
-
-              {child.badges && (
-                <>
-                  <h3 className="chart-title">
-                    Značke <span className="chart-title-meta">{child.badges.earned_count} od {child.badges.total}</span>
-                  </h3>
-                  <BadgeShelf badges={child.badges} compact />
-                </>
-              )}
             </NoteCard>
           ) : (
-            <NoteCard tilt={-0.6}>
+            <NoteCard tilt={-0.6} className="add-child-card">
               <h2>Dodajte otroka</h2>
               <p className="prose">Vpišite ime in razred otroka, pa bo lahko začel nalagati snov.</p>
               <Link to="/onboarding" className="btn btn-primary">
                 Dodaj otroka
               </Link>
+            </NoteCard>
+          )}
+
+          {child && (
+            <NoteCard tilt={0.5} className="details-card" as="div">
+              {/* <details> namesto stanja v Reactu: dostopno s tipkovnico in deluje brez JS */}
+              <details className="details-block">
+                <summary>
+                  <span className="details-title">Podrobnosti</span>
+                  <span className="details-hint">predmeti · aktivnost · skupaj</span>
+                </summary>
+
+                <div className="details-body">
+                  <h3 className="chart-title">Obvladovanje po predmetih</h3>
+                  <SubjectBars subjects={child.subjects} />
+
+                  <h3 className="chart-title">Aktivnost v zadnjih 7 dneh</h3>
+                  <WeekChart week={child.week} />
+
+                  <h3 className="chart-title">Skupaj doslej</h3>
+                  <ul className="totals-list totals-row">
+                    <li>
+                      <span className="totals-value">{child.totals.gradiva}</span> gradiv
+                    </li>
+                    <li>
+                      <span className="totals-value">{child.totals.kvizi}</span> kvizov
+                    </li>
+                    <li>
+                      <span className="totals-value">{child.totals.pregledi}</span> pregledanih listov
+                    </li>
+                  </ul>
+                </div>
+              </details>
             </NoteCard>
           )}
         </div>
@@ -288,6 +292,18 @@ export default function ParentDashboard() {
         <section className="activity-section" aria-labelledby="activity-title">
           <h2 id="activity-title">Zadnja aktivnost</h2>
           <ActivityList activity={child.activity} />
+        </section>
+      )}
+
+      {child?.badges && (
+        <section className="parent-badges" aria-labelledby="badges-title">
+          <h2 id="badges-title">
+            Značke{' '}
+            <span className="chart-title-meta">
+              {child.badges.earned_count} od {child.badges.total}
+            </span>
+          </h2>
+          <BadgeShelf badges={child.badges} compact />
         </section>
       )}
 
