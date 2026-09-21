@@ -11,6 +11,7 @@ const latestResults = db.prepare(`
 `);
 
 const WEEK_START = "datetime('now', 'localtime', 'start of day', '-6 days', 'utc')";
+const PREV_WEEK_START = "datetime('now', 'localtime', 'start of day', '-13 days', 'utc')";
 
 const weekGenerations = db.prepare(`
   SELECT date(created_at, 'localtime') AS day, COUNT(*) AS n
@@ -22,6 +23,39 @@ const weekQuizzes = db.prepare(`
   FROM quiz_results q JOIN generations g ON g.id = q.generation_id
   WHERE g.child_id = ? AND q.created_at >= ${WEEK_START}
   GROUP BY day
+`);
+const weekChecks = db.prepare(`
+  SELECT date(created_at, 'localtime') AS day, COUNT(*) AS n
+  FROM worksheet_checks WHERE child_id = ? AND created_at >= ${WEEK_START}
+  GROUP BY day
+`);
+
+const prevWeekQuizzes = db.prepare(`
+  SELECT COUNT(*) AS n, SUM(q.score) AS score, SUM(q.total) AS total
+  FROM quiz_results q JOIN generations g ON g.id = q.generation_id
+  WHERE g.child_id = ? AND q.created_at >= ${PREV_WEEK_START} AND q.created_at < ${WEEK_START}
+`);
+
+const totals = db.prepare(`
+  SELECT
+    (SELECT COUNT(*) FROM generations WHERE child_id = :id) AS gradiva,
+    (SELECT COUNT(*) FROM quiz_results q JOIN generations g ON g.id = q.generation_id
+       WHERE g.child_id = :id) AS kvizi,
+    (SELECT COUNT(*) FROM worksheet_checks WHERE child_id = :id) AS pregledi
+`);
+
+// Vsi dnevi z aktivnostjo, najnovejši najprej — za štetje niza zaporednih dni
+const activeDays = db.prepare(`
+  SELECT DISTINCT day FROM (
+    SELECT date(created_at, 'localtime') AS day FROM generations WHERE child_id = :id
+    UNION
+    SELECT date(q.created_at, 'localtime') FROM quiz_results q
+      JOIN generations g ON g.id = q.generation_id WHERE g.child_id = :id
+    UNION
+    SELECT date(created_at, 'localtime') FROM worksheet_checks WHERE child_id = :id
+  )
+  ORDER BY day DESC
+  LIMIT 400
 `);
 
 const recentActivity = db.prepare(`
@@ -64,18 +98,61 @@ function localDay(offsetDays) {
   return d.toLocaleDateString('sv-SE');
 }
 
+// Niz teče, dokler je otrok delal vsak dan zapored; današnji brezdelni dan ga še ne prekine
+function currentStreak(childId) {
+  const days = new Set(activeDays.all({ id: childId }).map(r => r.day));
+  if (days.size === 0) return 0;
+
+  let offset = days.has(localDay(0)) ? 0 : 1;
+  if (!days.has(localDay(offset))) return 0;
+
+  let streak = 0;
+  while (days.has(localDay(offset))) {
+    streak += 1;
+    offset += 1;
+  }
+  return streak;
+}
+
+// Obvladovanje po predmetih, najšibkejši najprej — tam starš najprej pogleda
+function subjectBreakdown(childId) {
+  const bySubject = new Map();
+  for (const r of latestResults.all(childId)) {
+    const s = bySubject.get(r.subject) ?? { score: 0, total: 0, quizzes: 0 };
+    bySubject.set(r.subject, { score: s.score + r.score, total: s.total + r.total, quizzes: s.quizzes + 1 });
+  }
+  return [...bySubject]
+    .map(([subject, s]) => ({ subject, percent: Math.round((s.score / s.total) * 100), quizzes: s.quizzes }))
+    .sort((a, b) => a.percent - b.percent || b.quizzes - a.quizzes);
+}
+
+function percentOf(score, total) {
+  return total ? Math.round((score / total) * 100) : null;
+}
+
 function childOverview(childId) {
   const generationsByDay = new Map(weekGenerations.all(childId).map(r => [r.day, r.n]));
   const quizRows = weekQuizzes.all(childId);
   const quizzesByDay = new Map(quizRows.map(r => [r.day, r.n]));
+  const checksByDay = new Map(weekChecks.all(childId).map(r => [r.day, r.n]));
 
   const week = Array.from({ length: 7 }, (_, i) => {
     const day = localDay(6 - i);
-    return { day, gradiva: generationsByDay.get(day) ?? 0, kvizi: quizzesByDay.get(day) ?? 0 };
+    return {
+      day,
+      gradiva: generationsByDay.get(day) ?? 0,
+      kvizi: quizzesByDay.get(day) ?? 0,
+      pregledi: checksByDay.get(day) ?? 0,
+    };
   });
 
   const weekScore = quizRows.reduce((sum, r) => sum + r.score, 0);
   const weekTotal = quizRows.reduce((sum, r) => sum + r.total, 0);
+  const weekQuizCount = quizRows.reduce((sum, r) => sum + r.n, 0);
+
+  const prev = prevWeekQuizzes.get(childId);
+  const weekPercent = percentOf(weekScore, weekTotal);
+  const prevPercent = percentOf(prev.score ?? 0, prev.total ?? 0);
 
   const weakest = latestResults
     .all(childId)
@@ -86,8 +163,15 @@ function childOverview(childId) {
 
   return {
     week,
-    week_quiz_percent: weekTotal ? Math.round((weekScore / weekTotal) * 100) : null,
-    week_quizzes: quizRows.reduce((sum, r) => sum + r.n, 0),
+    week_quiz_percent: weekPercent,
+    week_quizzes: weekQuizCount,
+    prev_quiz_percent: prevPercent,
+    prev_quizzes: prev.n ?? 0,
+    // Razlika je smiselna le, če sta oba tedna imela kvize
+    quiz_percent_delta: weekPercent !== null && prevPercent !== null ? weekPercent - prevPercent : null,
+    streak: currentStreak(childId),
+    subjects: subjectBreakdown(childId),
+    totals: totals.get({ id: childId }),
     weakest,
     activity: recentActivity.all(childId, childId, childId, 12).map(({ sort_id, ...row }) => row),
   };

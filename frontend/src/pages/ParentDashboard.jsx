@@ -4,6 +4,7 @@ import api, { errorMessage } from '../api';
 import NoteCard from '../components/NoteCard';
 import CreditRing from '../components/CreditRing';
 import WeekChart from '../components/WeekChart';
+import SubjectBars from '../components/SubjectBars';
 import OnboardingTutorial from '../components/OnboardingTutorial';
 import { formatDate } from '../constants';
 import '../styles/parent.css';
@@ -12,6 +13,42 @@ const PLAN_NAMES = { basic: 'Basic', standard: 'Standard', family: 'Družina' };
 const LOW_CREDITS = 10;
 const ACTIVITY_TYPES = { gradivo: 'Novo gradivo', kviz: 'Kviz', pregled: 'Pregledan list' };
 const TUTORIAL_KEY = 'snovko_parent_tutorial_done';
+
+function dayLabel(n) {
+  const mod = n % 100;
+  if (mod === 1) return 'dan zapored';
+  if (mod === 2) return 'dneva zapored';
+  if (mod === 3 || mod === 4) return 'dni zapored';
+  return 'dni zapored';
+}
+
+// Smer nosita puščica in besedilo, ne samo barva
+function Trend({ delta, prevPercent }) {
+  if (delta === null) {
+    return (
+      <p className="trend-row">
+        <span className="trend-chip is-flat">brez primerjave</span>
+        <span className="trend-base">prejšnji teden ni bilo kvizov</span>
+      </p>
+    );
+  }
+
+  const up = delta > 0;
+  return (
+    <p className="trend-row">
+      {delta === 0 ? (
+        <span className="trend-chip is-flat">enako</span>
+      ) : (
+        <span className={`trend-chip ${up ? 'is-up' : 'is-down'}`}>
+          <span aria-hidden="true">{up ? '↑' : '↓'}</span>
+          {up ? '+' : '−'}
+          {Math.abs(delta)} o. t.
+        </span>
+      )}
+      <span className="trend-base">prejšnji teden {prevPercent} %</span>
+    </p>
+  );
+}
 
 function ActivityList({ activity }) {
   if (activity.length === 0) {
@@ -123,24 +160,50 @@ export default function ParentDashboard() {
                   <span className="stat-label">
                     pravilnih odgovorov{child.week_quizzes > 0 ? ` v ${child.week_quizzes} kvizih` : ''} v zadnjih 7 dneh
                   </span>
+                  <Trend delta={child.quiz_percent_delta} prevPercent={child.prev_quiz_percent} />
                 </div>
                 <div className="stat">
-                  <span className="stat-label stat-label-top">Najšibkejše teme</span>
-                  {child.weakest.length === 0 ? (
-                    <span className="stat-empty">{child.week_quizzes > 0 ? 'Vse rešeno brez napak!' : 'Še ni rešenih kvizov.'}</span>
-                  ) : (
-                    <ol className="weak-list">
-                      {child.weakest.map(w => (
-                        <li key={w.id}>
-                          <Link to={`/results/${w.id}`}>{w.naslov}</Link>
-                          <span className="weak-meta">
-                            {w.subject} · {w.percent} %
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
+                  <span className="stat-value">{child.streak}</span>
+                  <span className="stat-label">{dayLabel(child.streak)}</span>
+                  {child.streak === 0 && <span className="trend-base">zadnje dni brez aktivnosti</span>}
                 </div>
+                <div className="stat">
+                  <span className="stat-label stat-label-top">Skupaj doslej</span>
+                  <ul className="totals-list">
+                    <li>
+                      <span className="totals-value">{child.totals.gradiva}</span> gradiv
+                    </li>
+                    <li>
+                      <span className="totals-value">{child.totals.kvizi}</span> kvizov
+                    </li>
+                    <li>
+                      <span className="totals-value">{child.totals.pregledi}</span> pregledanih listov
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <h3 className="chart-title">Obvladovanje po predmetih</h3>
+              <SubjectBars subjects={child.subjects} />
+
+              <div className="weak-block">
+                <h3 className="chart-title">Najšibkejše teme</h3>
+                {child.weakest.length === 0 ? (
+                  <span className="stat-empty">
+                    {child.week_quizzes > 0 ? 'Vse rešeno brez napak!' : 'Še ni rešenih kvizov.'}
+                  </span>
+                ) : (
+                  <ol className="weak-list">
+                    {child.weakest.map(w => (
+                      <li key={w.id}>
+                        <Link to={`/results/${w.id}`}>{w.naslov}</Link>
+                        <span className="weak-meta">
+                          {w.subject} · {w.percent} %
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
 
               <h3 className="chart-title">Aktivnost v zadnjih 7 dneh</h3>

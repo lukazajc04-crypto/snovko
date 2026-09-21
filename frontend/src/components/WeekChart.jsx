@@ -1,14 +1,15 @@
 import { useState } from 'react';
 
 const SERIES = [
-  { key: 'gradiva', label: 'gradiva', className: 'bar-gradiva' },
-  { key: 'kvizi', label: 'rešeni kvizi', className: 'bar-kvizi' },
+  { key: 'gradiva', label: 'gradiva', className: 'bar-gradiva', forms: ['gradivo', 'gradivi', 'gradiva', 'gradiv'] },
+  { key: 'kvizi', label: 'rešeni kvizi', className: 'bar-kvizi', forms: ['kviz', 'kviza', 'kvizi', 'kvizov'] },
+  { key: 'pregledi', label: 'pregledani listi', className: 'bar-pregledi', forms: ['pregled', 'pregleda', 'pregledi', 'pregledov'] },
 ];
 
 const dayName = iso => new Date(`${iso}T12:00:00`).toLocaleDateString('sl-SI', { weekday: 'short' }).replace('.', '');
 const dayDate = iso => new Date(`${iso}T12:00:00`).toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'numeric' });
 
-function countLabel(n, one, two, few, many) {
+function countLabel(n, [one, two, few, many]) {
   const mod = n % 100;
   if (mod === 1) return `${n} ${one}`;
   if (mod === 2) return `${n} ${two}`;
@@ -18,7 +19,7 @@ function countLabel(n, one, two, few, many) {
 
 export default function WeekChart({ week }) {
   const [hovered, setHovered] = useState(null);
-  const max = Math.max(1, ...week.flatMap(d => [d.gradiva, d.kvizi]));
+  const max = Math.max(1, ...week.flatMap(d => SERIES.map(s => d[s.key] ?? 0)));
   const lastIndex = week.length - 1;
 
   return (
@@ -47,8 +48,8 @@ export default function WeekChart({ week }) {
                 {SERIES.map(s => (
                   <span
                     key={s.key}
-                    className={`chart-bar ${s.className} ${d[s.key] === 0 ? 'is-zero' : ''}`}
-                    style={{ height: `${(d[s.key] / max) * 100}%` }}
+                    className={`chart-bar ${s.className} ${(d[s.key] ?? 0) === 0 ? 'is-zero' : ''}`}
+                    style={{ height: `${((d[s.key] ?? 0) / max) * 100}%` }}
                   />
                 ))}
               </div>
@@ -58,8 +59,12 @@ export default function WeekChart({ week }) {
               {hovered === i && (
                 <span className="chart-tooltip">
                   <strong>{dayDate(d.day)}</strong>
-                  <span>{countLabel(d.gradiva, 'gradivo', 'gradivi', 'gradiva', 'gradiv')}</span>
-                  <span>{countLabel(d.kvizi, 'kviz', 'kviza', 'kvizi', 'kvizov')}</span>
+                  {SERIES.map(s => (
+                    <span key={s.key} className="tooltip-row">
+                      <span className={`legend-swatch ${s.className}`} aria-hidden="true" />
+                      {countLabel(d[s.key] ?? 0, s.forms)}
+                    </span>
+                  ))}
                 </span>
               )}
             </div>
@@ -67,25 +72,32 @@ export default function WeekChart({ week }) {
         </div>
       </div>
 
-      <table className="visually-hidden">
-        <caption>Aktivnost v zadnjih 7 dneh</caption>
-        <thead>
-          <tr>
-            <th scope="col">Dan</th>
-            <th scope="col">Gradiva</th>
-            <th scope="col">Rešeni kvizi</th>
-          </tr>
-        </thead>
-        <tbody>
-          {week.map(d => (
-            <tr key={d.day}>
-              <th scope="row">{dayDate(d.day)}</th>
-              <td>{d.gradiva}</td>
-              <td>{d.kvizi}</td>
+      {/* Tabela za bralnike zaslona; ovita v blok, ker se <table> ne da skrčiti s width:1px */}
+      <div className="visually-hidden">
+        <table>
+          <caption>Aktivnost v zadnjih 7 dneh</caption>
+          <thead>
+            <tr>
+              <th scope="col">Dan</th>
+              {SERIES.map(s => (
+                <th key={s.key} scope="col">
+                  {s.label}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {week.map(d => (
+              <tr key={d.day}>
+                <th scope="row">{dayDate(d.day)}</th>
+                {SERIES.map(s => (
+                  <td key={s.key}>{d[s.key] ?? 0}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }
