@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS worksheet_checks (
   created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Prislužene značke se shranijo, ker ostanejo trajno: niz 7 dni je bil dosežen,
+-- tudi ko se kasneje prekine
+CREATE TABLE IF NOT EXISTS badges (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  child_id  INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  code      TEXT    NOT NULL,
+  earned_at TEXT    NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (child_id, code)
+);
+
 CREATE INDEX IF NOT EXISTS idx_children_parent   ON children(parent_id);
 CREATE INDEX IF NOT EXISTS idx_checks_child      ON worksheet_checks(child_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_generations_child ON generations(child_id, created_at);

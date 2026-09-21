@@ -4,6 +4,7 @@ import api, { errorMessage } from '../api';
 import UploadZone from '../components/UploadZone';
 import GeneratingNote from '../components/GeneratingNote';
 import LinkChildForm from '../components/LinkChildForm';
+import BadgeShelf from '../components/BadgeShelf';
 import OnboardingTutorial from '../components/OnboardingTutorial';
 import { GENERATION_COST, SUBJECTS, formatDate } from '../constants';
 import { useAuth } from '../context/AuthContext';
@@ -211,6 +212,13 @@ export default function ChildDashboard() {
             <h2 id="recent-title">Zadnje</h2>
             <RecentList generations={data.generations} checks={data.checks} />
           </section>
+
+          {data.badges && (
+            <section className="badges-section" aria-labelledby="badges-title">
+              <h2 id="badges-title">Tvoje značke</h2>
+              <BadgeShelf badges={data.badges} />
+            </section>
+          )}
         </>
       )}
 

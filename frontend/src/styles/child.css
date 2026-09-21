@@ -162,6 +162,9 @@
 /* Zadnja gradiva */
 .recent { margin-top: 3.5rem; }
 .recent h2 { margin-bottom: 1rem; }
+
+.badges-section { margin-top: 3rem; }
+.badges-section h2 { margin-bottom: 1rem; }
 .recent-empty { padding: 1rem 0; }
 .recent-list { list-style: none; border-top: 1.5px solid var(--ink); }
 .recent-item {

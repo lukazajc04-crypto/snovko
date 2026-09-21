@@ -75,6 +75,7 @@
 .chart-title { margin: 1.4rem 0 0.75rem; font-size: 1rem; font-weight: 600; font-family: var(--font-ui); }
 /* Prebije .parent-grid .note-card > * + * { margin-top: 0 }, ki sicer stisne razdelke skupaj */
 .parent-grid .progress-card .chart-title { margin-top: 1.6rem; }
+.chart-title-meta { font-weight: 400; color: var(--ink-faint); }
 
 /* Graf tedna */
 .week-chart { --chart-gradiva: #3a6ea5; --chart-kvizi: #b0472c; --chart-pregledi: #6b4c9a; }

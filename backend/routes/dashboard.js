@@ -3,6 +3,7 @@ const db = require('../db/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { PLANS } = require('../services/stripe');
 const { childOverview } = require('../services/progress');
+const { syncBadges, listBadges } = require('../services/badges');
 const { findChildForUser, childNotFoundMessage, publicChild } = require('../services/access');
 
 const router = express.Router();
@@ -40,6 +41,7 @@ router.get('/child', requireAuth, (req, res) => {
     credits: getCredits.get(child.parent_id)?.balance ?? 0,
     generations: recentGenerations.all(child.id),
     checks: recentChecks.all(child.id),
+    badges: syncBadges(child.id),
   });
 });
 
@@ -59,7 +61,15 @@ router.get('/parent', requireAuth, requireRole('parent'), (req, res) => {
       subscribed: Boolean(user.subscription_id),
     },
     children: children.map(c => ({ ...publicChild(c), access_code: c.access_code, linked: c.user_id !== null })),
-    child: selected ? { id: selected.id, name: selected.name, grade: selected.grade, ...childOverview(selected.id) } : null,
+    child: selected
+      ? {
+          id: selected.id,
+          name: selected.name,
+          grade: selected.grade,
+          ...childOverview(selected.id),
+          badges: listBadges(selected.id),
+        }
+      : null,
   });
 });
 

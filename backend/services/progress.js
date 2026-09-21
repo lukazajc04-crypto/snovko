@@ -177,4 +177,4 @@ function childOverview(childId) {
   };
 }
 
-module.exports = { subjectProgress, childOverview };
+module.exports = { subjectProgress, childOverview, currentStreak, subjectBreakdown };

@@ -5,6 +5,7 @@ import NoteCard from '../components/NoteCard';
 import CreditRing from '../components/CreditRing';
 import WeekChart from '../components/WeekChart';
 import SubjectBars from '../components/SubjectBars';
+import BadgeShelf from '../components/BadgeShelf';
 import OnboardingTutorial from '../components/OnboardingTutorial';
 import { formatDate } from '../constants';
 import '../styles/parent.css';
@@ -208,6 +209,15 @@ export default function ParentDashboard() {
 
               <h3 className="chart-title">Aktivnost v zadnjih 7 dneh</h3>
               <WeekChart week={child.week} />
+
+              {child.badges && (
+                <>
+                  <h3 className="chart-title">
+                    Značke <span className="chart-title-meta">{child.badges.earned_count} od {child.badges.total}</span>
+                  </h3>
+                  <BadgeShelf badges={child.badges} compact />
+                </>
+              )}
             </NoteCard>
           ) : (
             <NoteCard tilt={-0.6}>
