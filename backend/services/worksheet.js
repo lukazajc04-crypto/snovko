@@ -2,7 +2,9 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { GenerationError } = require('./claude');
 
 const client = new Anthropic();
-const MODEL = 'claude-opus-5';
+// Sonnet namesto Opus: pregled je zaznavanje + preverjanje, ne zahteva najvišje inteligence.
+// Opus je stal ~11x več na pregled kot na generiranje gradiva pri isti ceni v kreditih.
+const MODEL = 'claude-sonnet-5';
 
 const SYSTEM_PROMPT = `Si prijazna učiteljica, ki pregleduje rešen učni list slovenskega osnovnošolca.
 
@@ -51,10 +53,8 @@ async function checkWorksheet({ image, subject, grade }) {
       .stream({
         model: MODEL,
         max_tokens: 16000,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
         system: SYSTEM_PROMPT,
-        output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
+        output_config: { effort: 'medium', format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
         messages: [
           {
             role: 'user',
