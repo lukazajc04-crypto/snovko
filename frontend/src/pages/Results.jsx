@@ -128,21 +128,31 @@ function ProgressNote({ progress, currentId }) {
 }
 
 function VideoNote() {
-  const [clicked, setClicked] = useState(false);
+  const [interested, setInterested] = useState(false);
   return (
     <div className="video-note">
       <div className="note-head">
         <h2>Video razlaga</h2>
+        <span className="video-soon">kmalu</span>
       </div>
-      <p>Kratka razlaga te snovi z diagrami in glasom.</p>
-      <button type="button" className="btn btn-primary" onClick={() => setClicked(true)}>
-        Ustvari video · od 4,90&nbsp;€
+      <p>
+        Ta snov, razložena v <strong>videu s slovenskim glasom</strong> in diagrami — za otroke, ki si lažje
+        zapomnijo, kar slišijo in vidijo.
+      </p>
+      <button
+        type="button"
+        className="btn"
+        onClick={() => setInterested(true)}
+        disabled={interested}
+        aria-live="polite"
+      >
+        {interested ? 'Hvala — javimo vam ✓' : 'Zanima me'}
       </button>
-      {clicked && (
-        <p className="hand-note" role="status">
-          Video razlage prihajajo kmalu.
-        </p>
-      )}
+      <p className="hand-note">
+        {interested
+          ? 'Ko bo video pripravljen, vas obvestimo po e-pošti.'
+          : 'Predvidena cena okoli 4,90 € na video.'}
+      </p>
     </div>
   );
 }
