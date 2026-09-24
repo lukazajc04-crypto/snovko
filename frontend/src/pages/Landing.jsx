@@ -137,6 +137,12 @@ export default function Landing() {
               </svg>
               Nikoli ne obtičite sredi naloge, ker vam je zmanjkalo brezplačnih sporočil.
             </li>
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4.5 12.5l5 5 10-11" />
+              </svg>
+              Vse lahko natisnete — razlago in učni list z nalogami, da se otrok uči brez zaslona.
+            </li>
           </ul>
         </div>
         <HeroExample />
