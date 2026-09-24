@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import NoteCard from '../components/NoteCard';
 import FlashcardDeck from '../components/FlashcardDeck';
@@ -158,6 +158,64 @@ function VideoNote() {
 }
 
 const LETTERS = ['a', 'b', 'c', 'd', 'e', 'f'];
+const WORKSHEET_COST = 2;
+
+function WorksheetNote({ generationId }) {
+  const navigate = useNavigate();
+  const [sheets, setSheets] = useState([]);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api
+      .get('/api/exercises', { params: { generation_id: generationId } })
+      .then(res => setSheets(res.data.sheets))
+      .catch(() => setSheets([]));
+  }, [generationId]);
+
+  async function create() {
+    setError('');
+    setWorking(true);
+    try {
+      const res = await api.post('/api/exercises', { generation_id: generationId });
+      navigate(`/ucni-list/${res.data.id}`);
+    } catch (err) {
+      setError(errorMessage(err, 'Učnega lista ni bilo mogoče sestaviti.'));
+      setWorking(false);
+    }
+  }
+
+  return (
+    <div className="worksheet-note">
+      <div className="note-head">
+        <h2>Učni list</h2>
+        <span className="note-counter">{WORKSHEET_COST} kredita</span>
+      </div>
+      <p>Naloge iz te snovi za reševanje na papir. Starš dobi rešitve na ločenem listu.</p>
+
+      {sheets.length > 0 && (
+        <ul className="sheet-list">
+          {sheets.map(s => (
+            <li key={s.id}>
+              <Link to={`/ucni-list/${s.id}`}>
+                Učni list · {formatDate(s.created_at, { day: 'numeric', month: 'long' })}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <button type="button" className="btn btn-primary" onClick={create} disabled={working}>
+        {working ? 'Sestavljam…' : sheets.length > 0 ? 'Sestavi novega' : 'Sestavi učni list'}
+      </button>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // Za papir se vse pokaže naenkrat — kartončki in kviz na zaslonu odgovore skrijejo
 // do klika, kar na natisnjenem listu nima smisla. Rešitve gredo na svojo stran,
@@ -330,6 +388,9 @@ export default function Results() {
         </NoteCard>
         <NoteCard tilt={-0.8} as="div">
           <ProgressNote progress={data.progress} currentId={data.id} />
+        </NoteCard>
+        <NoteCard tilt={0.6} as="div" className="note-worksheet">
+          <WorksheetNote generationId={data.id} />
         </NoteCard>
         <NoteCard tilt={0.9} as="div" className="note-video">
           <VideoNote />

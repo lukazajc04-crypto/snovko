@@ -1,0 +1,99 @@
+.worksheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+.worksheet-head h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); }
+.worksheet-intro {
+  max-width: 34rem;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-serif);
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+
+.task-list { display: flex; flex-direction: column; gap: 1.6rem; padding-left: 1.3rem; }
+.task::marker { font-family: var(--font-hand); font-weight: 700; font-size: 1.2rem; color: var(--rust); }
+.task-text { font-family: var(--font-serif); font-size: 1.02rem; line-height: 1.55; }
+
+.task-lines { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.8rem; }
+.task-line { display: block; height: 1px; background: var(--line); }
+
+.task-solution {
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--marker2);
+  border-radius: var(--radius);
+}
+.task-answer { font-size: 0.95rem; }
+.task-why { margin-top: 0.25rem; font-size: 0.88rem; color: var(--ink-dim); }
+
+.worksheet-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 1.5rem; }
+.worksheet-locked { margin-top: 1.5rem; }
+.worksheet-back { margin-top: 2rem; }
+.worksheet-back a { color: var(--rust); text-underline-offset: 3px; }
+
+@media (max-width: 600px) {
+  .worksheet-head { flex-direction: column; gap: 0.75rem; }
+}
+
+/* Tiskanje */
+.worksheet-page .print-sheet { display: none; }
+
+@media print {
+  @page { margin: 18mm 16mm; }
+
+  .topbar,
+  .worksheet-head,
+  .worksheet-intro,
+  .worksheet-card,
+  .worksheet-actions,
+  .worksheet-locked,
+  .worksheet-back { display: none !important; }
+
+  .page { padding: 0; }
+
+  .worksheet-page .print-sheet {
+    display: block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11.5pt;
+    line-height: 1.55;
+    color: #000;
+  }
+  .print-sheet h1 { font-size: 19pt; line-height: 1.2; margin: 0 0 0.3rem; }
+  .print-kicker { font-size: 10pt; color: #444; margin: 0 0 0.5rem; }
+  .print-intro { margin: 0; font-style: italic; color: #333; }
+  .print-head { margin-bottom: 1.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid #000; }
+
+  .print-tasks { padding-left: 1.3rem; }
+  .print-tasks > li { margin-bottom: 1.5rem; break-inside: avoid; }
+  .print-q { font-weight: 700; margin: 0; }
+
+  /* Črte za pisanje morajo biti vidne tudi v tisku */
+  .task-lines { display: flex; flex-direction: column; gap: 1.1rem; margin-top: 1rem; }
+  .task-line { display: block; height: 0; border-bottom: 1px solid #888; }
+
+  /* Rešitve na svoj list — starš jih obdrži, otrok dobi samo naloge */
+  .print-answers { break-before: page; }
+  .print-answers h2 {
+    font-size: 12pt;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 0.6rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid #000;
+  }
+  .print-answers ol { padding-left: 1.3rem; }
+  .print-answers li { margin-bottom: 0.5rem; break-inside: avoid; }
+  .print-why { color: #333; }
+
+  .print-footer {
+    margin-top: 2rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid #999;
+    font-size: 9pt;
+    color: #666;
+  }
+}

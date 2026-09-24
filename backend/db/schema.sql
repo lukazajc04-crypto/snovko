@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS worksheet_checks (
   created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Učni list z nalogami, ustvarjen iz gradiva. Rešitve so v istem zapisu, a jih
+-- API pošlje samo staršu — otrok dobi list brez odgovorov.
+CREATE TABLE IF NOT EXISTS exercise_sheets (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  generation_id INTEGER NOT NULL REFERENCES generations(id) ON DELETE CASCADE,
+  child_id      INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  content_json  TEXT    NOT NULL,
+  created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Prislužene značke se shranijo, ker ostanejo trajno: niz 7 dni je bil dosežen,
 -- tudi ko se kasneje prekine
 CREATE TABLE IF NOT EXISTS badges (
@@ -67,3 +77,4 @@ CREATE INDEX IF NOT EXISTS idx_children_parent   ON children(parent_id);
 CREATE INDEX IF NOT EXISTS idx_checks_child      ON worksheet_checks(child_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_generations_child ON generations(child_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_quiz_generation   ON quiz_results(generation_id);
+CREATE INDEX IF NOT EXISTS idx_sheets_generation ON exercise_sheets(generation_id);

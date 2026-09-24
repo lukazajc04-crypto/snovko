@@ -9,6 +9,7 @@ import ParentDashboard from './pages/ParentDashboard';
 import ChildDashboard from './pages/ChildDashboard';
 import Results from './pages/Results';
 import CheckResult from './pages/CheckResult';
+import Worksheet from './pages/Worksheet';
 import Subscription from './pages/Subscription';
 import Settings from './pages/Settings';
 import { homePathFor, useAuth } from './context/AuthContext';
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/upload" element={<UploadRedirect />} />
           <Route path="/results/:id" element={<Results />} />
           <Route path="/checks/:id" element={<CheckResult />} />
+          <Route path="/ucni-list/:id" element={<Worksheet />} />
         </Route>
 
         <Route element={<RequireAuth role="parent" />}>
