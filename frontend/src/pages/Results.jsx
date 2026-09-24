@@ -129,6 +129,19 @@ function ProgressNote({ progress, currentId }) {
 
 function VideoNote() {
   const [interested, setInterested] = useState(false);
+
+  useEffect(() => {
+    api
+      .get('/api/interest')
+      .then(res => setInterested(res.data.features.includes('video')))
+      .catch(() => {});
+  }, []);
+
+  function register() {
+    setInterested(true);
+    api.post('/api/interest', { feature: 'video' }).catch(() => {});
+  }
+
   return (
     <div className="video-note">
       <div className="note-head">
@@ -142,7 +155,7 @@ function VideoNote() {
       <button
         type="button"
         className="btn"
-        onClick={() => setInterested(true)}
+        onClick={register}
         disabled={interested}
         aria-live="polite"
       >

@@ -53,6 +53,27 @@ CREATE TABLE IF NOT EXISTS worksheet_checks (
   created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Žeton za ponastavitev gesla. Hranimo samo zgoščeno vrednost — kdor bi prišel do
+-- baze, iz nje ne more sestaviti veljavne povezave.
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT    NOT NULL UNIQUE,
+  expires_at TEXT    NOT NULL,
+  used_at    TEXT,
+  created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Zanimanje za funkcije, ki jih še ni (npr. video razlaga) — da se odloča po
+-- številkah in ne po občutku
+CREATE TABLE IF NOT EXISTS feature_interest (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  feature    TEXT    NOT NULL,
+  created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, feature)
+);
+
 -- Učni list z nalogami, ustvarjen iz gradiva. Rešitve so v istem zapisu, a jih
 -- API pošlje samo staršu — otrok dobi list brez odgovorov.
 CREATE TABLE IF NOT EXISTS exercise_sheets (

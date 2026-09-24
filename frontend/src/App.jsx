@@ -10,6 +10,11 @@ import ChildDashboard from './pages/ChildDashboard';
 import Results from './pages/Results';
 import CheckResult from './pages/CheckResult';
 import Worksheet from './pages/Worksheet';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import { Terms, Privacy } from './pages/Legal';
+import Footer from './components/Footer';
+import WakingNotice from './components/WakingNotice';
 import Subscription from './pages/Subscription';
 import Settings from './pages/Settings';
 import { homePathFor, useAuth } from './context/AuthContext';
@@ -28,6 +33,10 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/pozabljeno-geslo" element={<ForgotPassword />} />
+        <Route path="/ponastavi-geslo/:token" element={<ResetPassword />} />
+        <Route path="/pogoji" element={<Terms />} />
+        <Route path="/zasebnost" element={<Privacy />} />
 
         <Route element={<RequireAuth />}>
           <Route path="/upload" element={<UploadRedirect />} />
@@ -49,6 +58,8 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Footer />
+      <WakingNotice />
     </>
   );
 }

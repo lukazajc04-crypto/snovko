@@ -296,15 +296,6 @@ html { scroll-behavior: smooth; }
 .landing-cta .lead { max-width: 30rem; }
 .landing-cta .btn { margin-top: 0.75rem; }
 
-.landing-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 0 2rem;
-  font-size: 0.9rem;
-  color: var(--ink-faint);
-  border-top: 1.5px dashed var(--line);
-}
 .logo-small { font-size: 1.6rem; }
 
 /* ---------- Mobilno ---------- */

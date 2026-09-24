@@ -222,10 +222,6 @@ export default function Landing() {
         </Link>
       </section>
 
-      <footer className="landing-footer">
-        <span className="logo logo-small">Snovko</span>
-        <span>© {new Date().getFullYear()} Snovko</span>
-      </footer>
     </main>
   );
 }

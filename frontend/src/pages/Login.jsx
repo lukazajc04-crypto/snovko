@@ -47,6 +47,9 @@ export default function Login() {
           </button>
         </form>
         <p className="form-footer">
+          <Link to="/pozabljeno-geslo">Pozabljeno geslo?</Link>
+        </p>
+        <p className="form-footer">
           Še nimaš računa? <Link to="/register">Registriraj se</Link>
         </p>
       </NoteCard>

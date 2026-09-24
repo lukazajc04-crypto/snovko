@@ -49,9 +49,26 @@ export function AuthProvider({ children }) {
     [saveSession]
   );
 
+  // Ponastavitev vrne isto obliko kot prijava, zato uporabnika kar prijavimo —
+  // sicer bi takoj po nastavitvi novega gesla moral vpisati še prijavne podatke
+  const resetPassword = useCallback(
+    async (resetToken, password) =>
+      saveSession((await api.post('/api/auth/reset-password', { token: resetToken, password })).data),
+    [saveSession]
+  );
+
   const value = useMemo(
-    () => ({ token, user, loading, isAuthenticated: Boolean(token && user), login, register, logout }),
-    [token, user, loading, login, register, logout]
+    () => ({
+      token,
+      user,
+      loading,
+      isAuthenticated: Boolean(token && user),
+      login,
+      register,
+      resetPassword,
+      logout,
+    }),
+    [token, user, loading, login, register, resetPassword, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

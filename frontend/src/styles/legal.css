@@ -1,0 +1,19 @@
+.legal-page h1 { margin: 0.2rem 0 0.4rem; }
+.legal-updated { font-size: 0.85rem; color: var(--ink-faint); margin-bottom: 2rem; }
+
+.legal-section { margin-bottom: 2rem; }
+.legal-section h2 {
+  margin-bottom: 0.6rem;
+  font-size: 1.25rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px dashed var(--line);
+}
+.legal-section p {
+  margin-bottom: 0.7rem;
+  font-family: var(--font-serif);
+  line-height: 1.65;
+  color: var(--ink-dim);
+}
+
+.legal-back { margin-top: 2.5rem; }
+.legal-back a { color: var(--rust); text-underline-offset: 3px; }
