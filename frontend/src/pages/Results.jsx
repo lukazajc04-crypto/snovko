@@ -157,6 +157,86 @@ function VideoNote() {
   );
 }
 
+const LETTERS = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+// Za papir se vse pokaže naenkrat — kartončki in kviz na zaslonu odgovore skrijejo
+// do klika, kar na natisnjenem listu nima smisla. Rešitve gredo na svojo stran,
+// da lahko otrok najprej reši in šele nato preveri.
+function PrintSheet({ content, paragraphs, date }) {
+  return (
+    <div className="print-sheet" aria-hidden="true">
+      <header className="print-head">
+        <p className="print-kicker">
+          {content.kicker} · {date}
+        </p>
+        <h1>{content.naslov}</h1>
+      </header>
+
+      <section className="print-block">
+        <h2>Razlaga</h2>
+        {paragraphs.map((text, i) => (
+          <p key={i}>{text}</p>
+        ))}
+      </section>
+
+      <section className="print-block">
+        <h2>Ključni pojmi</h2>
+        <ul className="print-terms">
+          {content.pojmi.map(term => (
+            <li key={term}>{term}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="print-block">
+        <h2>Kartončki za učenje</h2>
+        <ol className="print-cards">
+          {content.kartoncki.map((c, i) => (
+            <li key={i}>
+              <p className="print-q">{c.vprasanje}</p>
+              <p className="print-a">{c.odgovor}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="print-block print-quiz">
+        <h2>Kviz</h2>
+        <ol className="print-questions">
+          {content.kviz.map((q, i) => (
+            <li key={i}>
+              <p className="print-q">{q.vprasanje}</p>
+              <ul className="print-options">
+                {q.opcije.map((opt, oi) => (
+                  <li key={oi}>
+                    <span className="print-box" /> {LETTERS[oi]}) {opt}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="print-block print-answers">
+        <h2>Rešitve</h2>
+        <ol>
+          {content.kviz.map((q, i) => (
+            <li key={i}>
+              <strong>
+                {LETTERS[q.pravilni_index]}) {q.opcije[q.pravilni_index]}
+              </strong>
+              {q.razlaga && <span className="print-why"> — {q.razlaga}</span>}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <p className="print-footer">Snovko · {content.naslov}</p>
+    </div>
+  );
+}
+
 export default function Results() {
   const { id } = useParams();
   const [data, setData] = useState(null);
@@ -201,7 +281,17 @@ export default function Results() {
         <p className="kicker">
           {content.kicker} · {formatDate(data.created_at, { day: 'numeric', month: 'long', year: 'numeric' })} →
         </p>
-        <h1>{content.naslov}</h1>
+        <div className="results-title-row">
+          <h1>{content.naslov}</h1>
+          <button type="button" className="btn btn-small print-action" onClick={() => window.print()}>
+            <svg className="print-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 9V4h10v5" />
+              <path d="M7 19H5.5A2.5 2.5 0 0 1 3 16.5v-4A2.5 2.5 0 0 1 5.5 10h13a2.5 2.5 0 0 1 2.5 2.5v4a2.5 2.5 0 0 1-2.5 2.5H17" />
+              <path d="M7 15h10v6H7z" />
+            </svg>
+            Natisni
+          </button>
+        </div>
         <div className="summary-text">
           {paragraphs.map((text, pi) => (
             <p key={pi}>
@@ -245,6 +335,12 @@ export default function Results() {
           <VideoNote />
         </NoteCard>
       </aside>
+
+      <PrintSheet
+        content={content}
+        paragraphs={paragraphs}
+        date={formatDate(data.created_at, { day: 'numeric', month: 'long', year: 'numeric' })}
+      />
     </main>
   );
 }

@@ -214,3 +214,86 @@
   .results-page { grid-template-columns: 1fr; }
   .results-notes { max-width: 520px; }
 }
+
+/* Tiskanje */
+.results-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
+.print-action { flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 0.4rem; }
+.print-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.print-sheet { display: none; }
+
+@media print {
+  @page { margin: 18mm 16mm; }
+
+  .topbar,
+  .results-summary,
+  .results-notes { display: none !important; }
+
+  .page { padding: 0; }
+
+  .print-sheet {
+    display: block;
+    max-width: none;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 11.5pt;
+    line-height: 1.55;
+    color: #000;
+  }
+  .print-sheet h1 { font-size: 20pt; line-height: 1.2; margin: 0 0 0.2rem; }
+  .print-sheet h2 {
+    font-size: 12pt;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 0.5rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid #000;
+  }
+  .print-head { margin-bottom: 1.4rem; }
+  .print-kicker { font-size: 10pt; color: #444; margin: 0; }
+
+  .print-block { margin-bottom: 1.5rem; break-inside: avoid; }
+  .print-block p { margin: 0 0 0.6rem; }
+
+  .print-terms { list-style: none; display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; padding: 0; }
+  .print-terms li { padding: 0.12rem 0.5rem; border: 1px solid #666; border-radius: 3px; font-size: 10.5pt; }
+
+  .print-cards { padding-left: 1.2rem; }
+  .print-cards li { margin-bottom: 0.7rem; break-inside: avoid; }
+  .print-q { font-weight: 700; margin: 0 0 0.15rem; }
+  .print-a { margin: 0; color: #333; }
+
+  .print-questions { padding-left: 1.2rem; }
+  .print-questions > li { margin-bottom: 0.9rem; break-inside: avoid; }
+  .print-options { list-style: none; padding-left: 0.2rem; margin: 0.25rem 0 0; }
+  .print-options li { margin-bottom: 0.15rem; }
+  .print-box {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-right: 0.35rem;
+    border: 1px solid #000;
+    vertical-align: -1px;
+  }
+
+  /* Rešitve na svoj list, da otrok najprej reši */
+  .print-answers { break-before: page; }
+  .print-answers ol { padding-left: 1.2rem; }
+  .print-answers li { margin-bottom: 0.45rem; }
+  .print-why { color: #333; }
+
+  .print-footer {
+    margin-top: 2rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid #999;
+    font-size: 9pt;
+    color: #666;
+  }
+}
