@@ -164,7 +164,7 @@ async function generateMaterial({ text, image, subject, grade }) {
 const HL_MIN_WORDS = 3;
 const HL_MAX_WORDS = 15;
 const HL_MAX_PER_PARAGRAPH = 2;
-const HL_MAX_SHARE = 0.25; // največ četrtina odstavka je lahko poudarjena
+const HL_MAX_SHARE = 0.35; // največ tretjina odstavka je lahko poudarjena (en kratek stavek mora stati)
 const HL_MIN_BUDGET = 40; // kratek odstavek naj vseeno lahko ohrani eno misel
 
 const trimPunctuation = phrase => phrase.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
@@ -213,12 +213,35 @@ function locate(text, phrase) {
   return best && best.score >= 0.6 ? best : null;
 }
 
+// Če poudarek zajame večino kratkega stavka, ga razširimo na cel stavek: odrezan košček
+// (»…zato sestavin s prostim očesom«) lahko pomeni nasprotno od celega stavka.
+const SENTENCE_MAX_WORDS = 22;
+const SENTENCE_MIN_COVER = 0.5;
+
+function expandToSentence(text, hit) {
+  const bounds = [0];
+  for (const m of text.matchAll(/[.!?]["»)]*\s+(?=[A-ZČŠŽ0-9"»])/g)) bounds.push(m.index + m[0].length);
+  bounds.push(text.length);
+  for (let i = 0; i < bounds.length - 1; i++) {
+    const start = bounds[i];
+    const end = bounds[i + 1];
+    if (hit.start < start || hit.start >= end) continue;
+    const sentence = text.slice(start, end);
+    const words = sentence.trim().split(/\s+/).length;
+    const covered = text.slice(hit.start, Math.min(hit.end, end)).trim().split(/\s+/).length;
+    if (words <= SENTENCE_MAX_WORDS && covered / words >= SENTENCE_MIN_COVER) return { start, end };
+    return hit;
+  }
+  return hit;
+}
+
 function paragraphHighlights(text, candidates) {
   const budget = Math.max(text.length * HL_MAX_SHARE, HL_MIN_BUDGET);
   const found = [];
   for (const raw of candidates || []) {
-    const hit = locate(text, trimPunctuation(String(raw).trim()));
-    if (!hit) continue;
+    const located = locate(text, trimPunctuation(String(raw).trim()));
+    if (!located) continue;
+    const hit = expandToSentence(text, located);
     const phrase = trimPunctuation(text.slice(hit.start, hit.end));
     const words = phrase.split(/\s+/).length;
     if (words < HL_MIN_WORDS || words > HL_MAX_WORDS) continue;
