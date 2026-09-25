@@ -114,7 +114,7 @@ async function generateMaterial({ text, image, subject, grade }) {
       // nekaj tisoč tokenov; prenizek strop bi vrnil "max_tokens" in napako uporabniku
       max_tokens: 16000,
       system: SYSTEM_PROMPT,
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
       messages: [{ role: 'user', content }],
     });
   } catch (err) {
@@ -169,18 +169,62 @@ const HL_MIN_BUDGET = 40; // kratek odstavek naj vseeno lahko ohrani eno misel
 
 const trimPunctuation = phrase => phrase.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
 
-// Poudarek mora biti dobesedni odsek svojega odstavka, sicer ga odjemalec ne bi našel. Sheme
-// dobesednosti ne morejo prisiliti, zato neveljavne zavrže koda. Poudarki ostanejo v vrstnem
-// redu, kot si sledijo v besedilu, ker jih odjemalec išče s kazalcem.
+// Model poudarka pogosto ne prepiše dobesedno, ampak ga preoblikuje (drugačna končnica, izpuščena
+// beseda). Zato dobesedno iskanje zavrže večino poudarkov. Če dobesednega zadetka ni, poiščemo
+// tisti strnjeni odsek odstavka, ki se z besedami poudarka najbolj ujema; poudarek je tako vedno
+// pravi odsek besedila, ne model-ov izmišljen zapis.
+const stemOf = word => {
+  const w = word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  return w.length > 5 ? w.slice(0, 5) : w; // slovenske končnice se spreminjajo, koren ne
+};
+
+function tokenize(text) {
+  return [...text.matchAll(/\S+/g)]
+    .map(m => ({ start: m.index, end: m.index + m[0].length, stem: stemOf(m[0]) }))
+    .filter(t => t.stem);
+}
+
+function locate(text, phrase) {
+  const exact = text.indexOf(phrase);
+  if (exact !== -1) return { start: exact, end: exact + phrase.length };
+
+  const wanted = tokenize(phrase).map(t => t.stem);
+  if (wanted.length < HL_MIN_WORDS) return null;
+  const wantedSet = new Set(wanted);
+  const tokens = tokenize(text);
+  let best = null;
+
+  for (let i = 0; i < tokens.length; i++) {
+    for (let len = Math.max(HL_MIN_WORDS, wanted.length - 2); len <= wanted.length + 3 && i + len <= tokens.length; len++) {
+      const first = tokens[i];
+      const last = tokens[i + len - 1];
+      // Odsek se začne in konča z vsebinsko besedo, ne z "je" ali "in"
+      if (!wantedSet.has(first.stem) || !wantedSet.has(last.stem) || first.stem.length < 4 || last.stem.length < 4) continue;
+      const window = tokens.slice(i, i + len);
+      const hits = window.filter(t => wantedSet.has(t.stem)).length;
+      const covered = new Set(window.map(t => t.stem).filter(stem => wantedSet.has(stem))).size;
+      // F1: odsek ne sme biti poln nepovezanih besed (natančnost) in mora zajeti večino poudarka (obseg)
+      const precision = hits / len;
+      const recall = covered / wantedSet.size;
+      const score = precision + recall === 0 ? 0 : (2 * precision * recall) / (precision + recall);
+      if (!best || score > best.score) best = { score, start: first.start, end: last.end };
+    }
+  }
+  return best && best.score >= 0.6 ? best : null;
+}
+
 function paragraphHighlights(text, candidates) {
   const budget = Math.max(text.length * HL_MAX_SHARE, HL_MIN_BUDGET);
   const found = [];
   for (const raw of candidates || []) {
-    const phrase = trimPunctuation(String(raw).trim());
-    const words = phrase ? phrase.split(/\s+/).length : 0;
-    const start = words ? text.indexOf(phrase) : -1;
-    if (start === -1 || words < HL_MIN_WORDS || words > HL_MAX_WORDS) continue;
-    if (found.some(f => f.phrase === phrase)) continue;
+    const hit = locate(text, trimPunctuation(String(raw).trim()));
+    if (!hit) continue;
+    const phrase = trimPunctuation(text.slice(hit.start, hit.end));
+    const words = phrase.split(/\s+/).length;
+    if (words < HL_MIN_WORDS || words > HL_MAX_WORDS) continue;
+    const start = text.indexOf(phrase);
+    // Prekrivajoči se in podvojeni poudarki bi se v odjemalcu izničili
+    if (found.some(f => start < f.start + f.phrase.length && start + phrase.length > f.start)) continue;
     found.push({ phrase, start });
   }
   found.sort((a, b) => a.start - b.start);
