@@ -16,7 +16,7 @@ Dolžina se ravna po obsegu vira:
 
 Vsak odstavek naj ima 3 do 5 stavkov in obravnava eno stvar. Odstavke loči s prazno vrstico, temam sledi po vrsti kot se pojavljajo v viru. Piši v preprostem jeziku, primernem razredu, a nikoli na račun popolnosti. Številk, formul, letnic in imen ne posplošuj — prepiši jih točno.
 
-POUDARKI so najpomembnejše misli iz izpiska, ki si jih mora otrok zapomniti: definicije, pravila, formule, ključne lastnosti. Vsak poudarek je KRATEK ODSEK (3 do 15 besed), ki ga DOBESEDNO in v celoti prepišeš iz izpiska, natanko tako, kot je tam napisan (enake črke, enaka končnica, enaka ločila). Ne parafraziraj in ne krajšaj sredi stavka. V vsakem odstavku poudari 1 do 2 odseka; poudarek naj ne bo posamezna beseda, ampak misel, ki jo otrok, ko jo prebere, zna povedati sam.
+POUDARJANJE: najpomembnejše misli v izpisku, ki si jih mora otrok zapomniti (definicije, pravila, formule, ključne lastnosti, pomembne letnice in imena), obkroži z dvojnim enačajem, na primer: Snov je vse, kar ==ima maso in zavzema prostor==. Obkrožen odsek naj bo cela misel dolžine 3 do 15 besed, ne posamezna beseda. V vsakem odstavku obkroži 1 do 2 odseka. Besedilo znotraj oznak ne spreminjaj — oznake le postavi okoli že napisanega. Oznak ==...== ne uporabljaj nikjer drugje (ne v pojmih, kartončkih ali kvizu).
 
 POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mora biti mogoče najti v besedilu izpiska, ki si ga pravkar napisal. Ne sprašuj po ničemer, česar v izpisku ni — tudi če to veš iz splošnega znanja ali je bilo v izvirni snovi, a v izpisek ni prišlo.
 
@@ -34,7 +34,6 @@ const OUTPUT_SCHEMA = {
     kicker: { type: 'string' },
     naslov: { type: 'string' },
     izpisek: { type: 'string' },
-    poudarki: { type: 'array', items: { type: 'string' } },
     pojmi: { type: 'array', items: { type: 'string' } },
     kartoncki: {
       type: 'array',
@@ -63,7 +62,7 @@ const OUTPUT_SCHEMA = {
       },
     },
   },
-  required: ['kicker', 'naslov', 'izpisek', 'poudarki', 'pojmi', 'kartoncki', 'kviz'],
+  required: ['kicker', 'naslov', 'izpisek', 'pojmi', 'kartoncki', 'kviz'],
   additionalProperties: false,
 };
 
@@ -127,23 +126,25 @@ async function generateMaterial({ text, image, subject, grade }) {
     throw new GenerationError('AI je vrnil neveljaven kviz. Poskusi znova.', 502);
   }
 
-  material.poudarki = validHighlights(material.izpisek, material.poudarki);
+  // Poudarke je model označil kar v besedilu (==...==). Iz oznak jih preberemo po vrsti, kot
+  // si sledijo v izpisku, in besedilo počistimo — tako ujemanje ni odvisno od tega, ali bi model
+  // odsek pozneje dobesedno prepisal.
+  const { text: izpisek, highlights } = extractHighlights(material.izpisek);
+  material.izpisek = izpisek;
+  material.poudarki = highlights;
 
   return material;
 }
 
-// Poudarek mora biti dobesedni odsek izpiska, sicer ga odjemalec ne bi našel in bi ostal
-// nepoudarjen. Model tega v shemi ni mogoče prisiliti, zato neveljavne zavržemo tukaj.
-function validHighlights(izpisek, highlights) {
-  const seen = new Set();
-  return (highlights || [])
-    .map(h => String(h).trim())
-    .filter(h => {
-      const words = h.split(/\s+/).length;
-      if (words < 2 || words > 25 || seen.has(h) || !izpisek.includes(h)) return false;
-      seen.add(h);
-      return true;
-    });
+function extractHighlights(marked) {
+  const highlights = [];
+  const text = String(marked).replace(/==([^=]+?)==/g, (_, phrase) => {
+    const clean = phrase.trim();
+    if (clean) highlights.push(clean);
+    return phrase;
+  });
+  // Nesparjene oznake, ki jih je model pustil, ne smejo priti do otroka
+  return { text: text.replace(/==/g, ''), highlights };
 }
 
-module.exports = { generateMaterial, GenerationError };
+module.exports = { generateMaterial, GenerationError, extractHighlights };

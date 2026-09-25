@@ -68,27 +68,29 @@ function renderParagraph(text, termRanges, currentWord) {
   return segments;
 }
 
-// Poudarki so dobesedni odseki izpiska, ki jih je izbral model (definicije, pravila, formule).
-// Vsak poiščemo v prvem odstavku, kjer se pojavi; prekrivajoče se preskočimo.
+// Poudarki so dobesedni odseki izpiska in si sledijo v vrstnem redu besedila. Iščemo jih s
+// kazalcem, da se ponovljena fraza ne označi na prejšnjem, napačnem mestu.
 function computeHighlightRanges(paragraphs, highlights) {
   const ranges = paragraphs.map(() => []);
+  let pi = 0;
+  let from = 0;
   highlights.forEach(raw => {
     const needle = String(raw).trim();
     if (!needle) return;
-    for (let pi = 0; pi < paragraphs.length; pi++) {
-      const start = paragraphs[pi].indexOf(needle);
+    for (let i = pi; i < paragraphs.length; i++) {
+      const start = paragraphs[i].indexOf(needle, i === pi ? from : 0);
       if (start === -1) continue;
-      const end = start + needle.length;
-      if (!ranges[pi].some(o => start < o.end && end > o.start)) ranges[pi].push({ start, end });
-      break;
+      ranges[i].push({ start, end: start + needle.length });
+      pi = i;
+      from = start + needle.length;
+      return;
     }
   });
-  ranges.forEach(r => r.sort((a, b) => a.start - b.start));
   return ranges;
 }
 
 // Izpisek je dolg, zato ga otrok bere po straneh; odstavka ne režemo na pol
-const PAGE_CHARS = 900;
+const PAGE_CHARS = 1400;
 
 function paginate(paragraphs) {
   const pages = [];
