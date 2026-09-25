@@ -200,6 +200,8 @@ function locate(text, phrase) {
       const last = tokens[i + len - 1];
       // Odsek se začne in konča z vsebinsko besedo, ne z "je" ali "in"
       if (!wantedSet.has(first.stem) || !wantedSet.has(last.stem) || first.stem.length < 4 || last.stem.length < 4) continue;
+      // Poudarek ne sme segati čez konec stavka: "…velikosti. Pri presejanju" je napačen košček
+      if (/[.!?]["»)]*\s+[A-ZČŠŽ]/.test(text.slice(first.start, last.end))) continue;
       const window = tokens.slice(i, i + len);
       const hits = window.filter(t => wantedSet.has(t.stem)).length;
       const covered = new Set(window.map(t => t.stem).filter(stem => wantedSet.has(stem))).size;
