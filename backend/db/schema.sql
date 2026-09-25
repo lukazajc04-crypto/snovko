@@ -53,6 +53,19 @@ CREATE TABLE IF NOT EXISTS worksheet_checks (
   created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Dejanska poraba AI za vsako generiranje gradiva: brez tega je strošek le ocena.
+CREATE TABLE IF NOT EXISTS api_usage (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  generation_id  INTEGER REFERENCES generations(id) ON DELETE SET NULL,
+  source_chars   INTEGER NOT NULL,
+  calls          INTEGER NOT NULL,
+  input_tokens   INTEGER NOT NULL,
+  output_tokens  INTEGER NOT NULL,
+  cost_usd       REAL    NOT NULL,
+  credits        INTEGER NOT NULL,
+  created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Žeton za ponastavitev gesla. Hranimo samo zgoščeno vrednost — kdor bi prišel do
 -- baze, iz nje ne more sestaviti veljavne povezave.
 CREATE TABLE IF NOT EXISTS password_resets (

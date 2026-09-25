@@ -44,20 +44,20 @@ const PLANS = [
     name: 'Basic',
     price: '11,90',
     tilt: -1.2,
-    features: ['1 otrok', '50 gradiv na mesec', 'Razlaga, kartončki in kviz', 'Pregled napredka za starše'],
+    features: ['1 otrok', '50 gradiv na mesec (ena stran = 1 gradivo)', 'Razlaga, kartončki in kviz', 'Pregled napredka za starše'],
   },
   {
     name: 'Standard',
     price: '17,90',
     tilt: 0.6,
     featured: true,
-    features: ['1 otrok', '250 gradiv na mesec', 'Razlaga, kartončki in kviz', 'Pregled napredka za starše', 'Večerni e-mail o tem, kaj se je učil'],
+    features: ['1 otrok', '250 gradiv na mesec (ena stran = 1 gradivo)', 'Razlaga, kartončki in kviz', 'Pregled napredka za starše', 'Večerni e-mail o tem, kaj se je učil'],
   },
   {
     name: 'Družina',
     price: '22,90',
     tilt: 1.2,
-    features: ['Do 3 otroci', '250 gradiv na mesec', 'Razlaga, kartončki in kviz', 'Pregled napredka za vsakega otroka', 'Večerni e-mail o tem, kaj se je učil'],
+    features: ['Do 3 otroci', '250 gradiv na mesec (ena stran = 1 gradivo)', 'Razlaga, kartončki in kviz', 'Pregled napredka za vsakega otroka', 'Večerni e-mail o tem, kaj se je učil'],
   },
 ];
 

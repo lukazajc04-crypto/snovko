@@ -5,9 +5,9 @@ import NoteCard from '../components/NoteCard';
 import '../styles/subscription.css';
 
 const PLANS = [
-  { id: 'basic', name: 'Basic', price: '11,90', tilt: -1, features: ['1 otrok', '50 gradiv na mesec (100 kreditov)', 'Pregled napredka'] },
-  { id: 'standard', name: 'Standard', price: '17,90', tilt: 0.6, features: ['1 otrok', '250 gradiv na mesec (500 kreditov)', 'Pregled napredka', 'Večerni e-mail o učenju'] },
-  { id: 'family', name: 'Družina', price: '22,90', tilt: 1, features: ['Do 3 otroci', '250 gradiv na mesec (500 kreditov)', 'Pregled napredka za vsakega', 'Večerni e-mail o učenju'] },
+  { id: 'basic', name: 'Basic', price: '11,90', tilt: -1, features: ['1 otrok', '100 kreditov: 50 enostranskih gradiv', 'Pregled napredka'] },
+  { id: 'standard', name: 'Standard', price: '17,90', tilt: 0.6, features: ['1 otrok', '500 kreditov: 250 enostranskih gradiv', 'Pregled napredka', 'Večerni e-mail o učenju'] },
+  { id: 'family', name: 'Družina', price: '22,90', tilt: 1, features: ['Do 3 otroci', '500 kreditov: 250 enostranskih gradiv', 'Pregled napredka za vsakega', 'Večerni e-mail o učenju'] },
 ];
 
 export default function Subscription() {

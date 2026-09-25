@@ -244,7 +244,7 @@ export default function ParentDashboard() {
               <CreditRing balance={credits.balance} max={credits.plan_credits} />
             </div>
             <p className="credits-meta">
-              {Math.floor(credits.balance / 2)} gradiv še na voljo
+              {Math.floor(credits.balance / 2)} enostranskih gradiv še na voljo
               {credits.reset_date && (
                 <>
                   <br />

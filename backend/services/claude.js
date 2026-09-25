@@ -6,6 +6,10 @@ const client = new Anthropic();
 const MODEL = 'claude-sonnet-5';
 const MAX_FLASHCARDS = 12;
 
+// Cene Sonnet 5 ($ na milijon žetonov). Uporabljene le za beleženje stroška, ne za zaračunavanje.
+const PRICE_INPUT_PER_MTOK = 2;
+const PRICE_OUTPUT_PER_MTOK = 10;
+
 // Do te dolžine vira zadostuje en klic (preizkušeno do ~3300 znakov). Daljšo snov razrežemo na dele,
 // ker izpisek zraste 2,5-4-krat: en klic bi zadel strop izhodnih tokenov in trajal več minut.
 const SINGLE_CALL_MAX_CHARS = 4000;
@@ -138,7 +142,7 @@ class GenerationError extends Error {
 }
 
 // Skupni klic: napake API-ja se prevedejo v sporočila za uporabnika na enem mestu
-async function callClaude({ system, content, schema, maxTokens = 16000 }) {
+async function callClaude({ system, content, schema, maxTokens = 16000, meter }) {
   let response;
   try {
     response = await client.messages.create({
@@ -159,6 +163,13 @@ async function callClaude({ system, content, schema, maxTokens = 16000 }) {
       throw new GenerationError('AI storitev trenutno ni na voljo. Poskusi znova.', 502);
     }
     throw err;
+  }
+
+  // Poraba se šteje tudi, če odgovor pozneje zavrnemo: klic je bil plačan
+  if (meter) {
+    meter.input += response.usage?.input_tokens ?? 0;
+    meter.output += response.usage?.output_tokens ?? 0;
+    meter.calls += 1;
   }
 
   if (response.stop_reason === 'refusal') {
@@ -268,7 +279,7 @@ function finish(material, paragraphs) {
 }
 
 // Dolga snov: dele izpišemo vzporedno, nato iz celotnega izpiska naredimo kartončke in kviz
-async function generateLong({ text, subject, grade }) {
+async function generateLong({ text, subject, grade, meter }) {
   const intro = `Predmet: ${subject}\nRazred: ${grade}. razred osnovne šole`;
   const chunks = splitSource(text);
 
@@ -277,6 +288,7 @@ async function generateLong({ text, subject, grade }) {
       callClaude({
         system: CHUNK_PROMPT,
         schema: CHUNK_SCHEMA,
+        meter,
         content: `${intro}\n\nTo je del ${i + 1} od ${chunks.length} iste snovi. V izpisek zajemi vse, kar je v njem, od začetka do konca.\n\nDel snovi:\n${chunk}`,
       })
     )
@@ -289,15 +301,14 @@ async function generateLong({ text, subject, grade }) {
     callClaude({
       system: AIDS_PROMPT,
       schema: AIDS_SCHEMA,
+      meter,
       content: `${intro}\n\nIzpisek:\n${izpisek}`,
     })
   );
   return finish(aids, paragraphs);
 }
 
-async function generateMaterial({ text, image, subject, grade }) {
-  if (!image && text.length > SINGLE_CALL_MAX_CHARS) return generateLong({ text, subject, grade });
-
+async function generateSingle({ text, image, subject, grade, meter }) {
   const intro = `Predmet: ${subject}\nRazred: ${grade}. razred osnovne šole`;
   const content = image
     ? [
@@ -309,8 +320,24 @@ async function generateMaterial({ text, image, subject, grade }) {
       ]
     : `${intro}\n\nŠolska snov:\n${text}\n\nV izpisek zajemi vso zgornjo snov, od začetka do konca.`;
 
-  const material = await callClaude({ system: SYSTEM_PROMPT, schema: OUTPUT_SCHEMA, content });
+  const material = await callClaude({ system: SYSTEM_PROMPT, schema: OUTPUT_SCHEMA, content, meter });
   return finish(material, material.odstavki);
+}
+
+// Vrne gradivo in dejansko porabo AI (žetoni in strošek), da se zabeleži poleg generiranja
+async function generateMaterial({ text, image, subject, grade }) {
+  const meter = { input: 0, output: 0, calls: 0 };
+  const material =
+    !image && text.length > SINGLE_CALL_MAX_CHARS
+      ? await generateLong({ text, subject, grade, meter })
+      : await generateSingle({ text, image, subject, grade, meter });
+
+  const costUsd = (meter.input * PRICE_INPUT_PER_MTOK + meter.output * PRICE_OUTPUT_PER_MTOK) / 1e6;
+  const usage = { calls: meter.calls, inputTokens: meter.input, outputTokens: meter.output, costUsd };
+  console.log(
+    `[claude] ${meter.calls} klicev, ${meter.input} vhodnih + ${meter.output} izhodnih žetonov ≈ $${costUsd.toFixed(4)}`
+  );
+  return { material, usage };
 }
 
 // Meje, ki jih model ne more preseči, ne glede na to, kaj vrne

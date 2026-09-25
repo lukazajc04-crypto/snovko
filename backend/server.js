@@ -19,6 +19,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const checkRoutes = require('./routes/checks');
 const exerciseRoutes = require('./routes/exercises');
 const interestRoutes = require('./routes/interest');
+const usageRoutes = require('./routes/usage');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -48,6 +49,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/checks', checkRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/interest', interestRoutes);
+app.use('/api/usage', usageRoutes);
 
 app.use((_req, res) => res.status(404).json({ error: 'Pot ne obstaja' }));
 

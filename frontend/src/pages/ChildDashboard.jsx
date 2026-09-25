@@ -241,7 +241,7 @@ export default function ChildDashboard() {
             {
               targetRef: creditRef,
               title: 'Tvoji krediti',
-              text: 'Vsaka generacija porabi 2 kredita. Krediti se obnovijo vsak mesec.',
+              text: 'Ena stran snovi porabi 2 kredita, daljša snov več. Krediti se obnovijo vsak mesec.',
               buttonLabel: 'Začnimo! ✓',
             },
           ]}

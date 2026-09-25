@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { creditsForText } from '../constants';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_SIDE = 2000;
@@ -11,7 +12,7 @@ const VARIANTS = {
     title: 'Povleci zvezek ali delovni list sem',
     hint: 'fotografija, PDF, Word ali besedilo',
     pick: 'Izberi fotografijo ali datoteko',
-    submit: 'Ustvari gradivo · 2 kredita',
+    submit: 'Ustvari gradivo · od 2 kreditov',
     typeError: 'Podprte so datoteke PDF, DOCX, JPG, PNG in TXT.',
     allowText: true,
   },
@@ -102,6 +103,17 @@ export default function UploadZone({ onSubmit, disabled, variant = 'material' })
 
   const ready = mode === 'file' ? Boolean(file) : text.trim().length > 0;
 
+  // Cena gradiva je vezana na dolžino: besedilo poznamo takoj, datoteko šele strežnik prebere
+  const pastedCredits = mode === 'text' ? creditsForText(text.trim().length) : null;
+  const submitLabel =
+    variant !== 'material'
+      ? config.submit
+      : pastedCredits !== null
+        ? `Ustvari gradivo · ${pastedCredits} kredite`
+        : file && isImage(file)
+          ? 'Ustvari gradivo · 2 kredita'
+          : config.submit;
+
   return (
     <div
       className={`upload-zone ${dragging ? 'is-dragging' : ''}`}
@@ -169,6 +181,9 @@ export default function UploadZone({ onSubmit, disabled, variant = 'material' })
       )}
 
       {error && <p className="form-error" role="alert">{error}</p>}
+      {variant === 'material' && (pastedCredits ?? 2) > 2 && (
+        <p className="hand-note">Daljša snov porabi več kreditov: 2 kredita na vsako stran.</p>
+      )}
 
       <div className="upload-actions">
         {mode === 'file' && !file && (
@@ -178,7 +193,7 @@ export default function UploadZone({ onSubmit, disabled, variant = 'material' })
         )}
         {ready && (
           <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={disabled}>
-            {config.submit}
+            {submitLabel}
           </button>
         )}
       </div>
