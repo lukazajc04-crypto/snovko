@@ -16,7 +16,7 @@ Dolžina se ravna po obsegu vira:
 
 Vsak odstavek naj ima 3 do 5 stavkov in obravnava eno stvar. Odstavke loči s prazno vrstico, temam sledi po vrsti kot se pojavljajo v viru. Piši v preprostem jeziku, primernem razredu, a nikoli na račun popolnosti. Številk, formul, letnic in imen ne posplošuj — prepiši jih točno.
 
-POUDARJANJE: najpomembnejše misli v izpisku, ki si jih mora otrok zapomniti (definicije, pravila, formule, ključne lastnosti, pomembne letnice in imena), obkroži z dvojnim enačajem, na primer: Snov je vse, kar ==ima maso in zavzema prostor==. Obkrožen odsek naj bo cela misel dolžine 3 do 15 besed, ne posamezna beseda. V vsakem odstavku obkroži 1 do 2 odseka. Besedilo znotraj oznak ne spreminjaj — oznake le postavi okoli že napisanega. Oznak ==...== ne uporabljaj nikjer drugje (ne v pojmih, kartončkih ali kvizu).
+POUDARJANJE: najpomembnejše misli v izpisku, ki si jih mora otrok zapomniti (definicije, pravila, formule, ključne lastnosti, pomembne letnice in imena), obkroži z dvojnim enačajem, na primer: Snov je vse, kar ==ima maso in zavzema prostor==. Obkrožen odsek naj bo cela misel dolžine 3 do 15 besed, ne posamezna beseda. V vsakem odstavku obkroži največ 2 odseka in skupaj največ desetino besedila — poudarjeno mora biti redko, sicer ne pomeni nič. Ne obkroži celih stavkov razen zelo kratkih, ne obkroži ločil in ne pusti nobene oznake nesparjene. Besedilo znotraj oznak ne spreminjaj — oznake le postavi okoli že napisanega. Oznak ==...== ne uporabljaj nikjer drugje (ne v pojmih, kartončkih ali kvizu).
 
 POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mora biti mogoče najti v besedilu izpiska, ki si ga pravkar napisal. Ne sprašuj po ničemer, česar v izpisku ni — tudi če to veš iz splošnega znanja ali je bilo v izvirni snovi, a v izpisek ni prišlo.
 
@@ -136,15 +136,48 @@ async function generateMaterial({ text, image, subject, grade }) {
   return material;
 }
 
+// Meje, ki jih model ne more preseči, ne glede na to, kaj označi
+const HL_MIN_WORDS = 3;
+const HL_MAX_WORDS = 15;
+const HL_MAX_PER_PARAGRAPH = 2;
+const HL_MAX_SHARE = 0.25; // največ četrtina odstavka je lahko poudarjena
+const HL_MIN_BUDGET = 40; // kratek odstavek naj vseeno lahko ohrani eno misel
+
+const trimPunctuation = phrase => phrase.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+
+// Odstavek pregledamo posebej. Če je oznak liho število, so se pari premaknili in bi bili
+// poudarjeni prav vmesni deli (vejice, pike) namesto misli — tak odstavek ostane brez poudarkov.
+function highlightParagraph(text, highlights) {
+  const markerCount = (text.match(/==/g) || []).length;
+  const plain = text.replace(/==/g, '');
+  if (markerCount === 0 || markerCount % 2 === 1) return plain;
+
+  const budget = Math.max(plain.length * HL_MAX_SHARE, HL_MIN_BUDGET);
+  let used = 0;
+  let kept = 0;
+  return text.replace(/==([^=]+?)==/g, (_, inner) => {
+    const phrase = trimPunctuation(inner);
+    const words = phrase ? phrase.split(/\s+/).length : 0;
+    const fits = words >= HL_MIN_WORDS && words <= HL_MAX_WORDS && used + phrase.length <= budget;
+    if (fits && kept < HL_MAX_PER_PARAGRAPH) {
+      highlights.push(phrase);
+      used += phrase.length;
+      kept += 1;
+    }
+    return inner;
+  }).replace(/==/g, '');
+}
+
+// Poudarke je model označil kar v besedilu (==...==). Iz oznak jih preberemo po vrsti, kot si
+// sledijo v izpisku, in besedilo počistimo — tako ujemanje ni odvisno od tega, ali bi model
+// odsek pozneje dobesedno prepisal. Presojo, kaj je še poudarek, opravi koda, ne model.
 function extractHighlights(marked) {
   const highlights = [];
-  const text = String(marked).replace(/==([^=]+?)==/g, (_, phrase) => {
-    const clean = phrase.trim();
-    if (clean) highlights.push(clean);
-    return phrase;
-  });
-  // Nesparjene oznake, ki jih je model pustil, ne smejo priti do otroka
-  return { text: text.replace(/==/g, ''), highlights };
+  const text = String(marked)
+    .split(/(\n+)/)
+    .map(part => (/^\n+$/.test(part) ? part : highlightParagraph(part, highlights)))
+    .join('');
+  return { text, highlights };
 }
 
 module.exports = { generateMaterial, GenerationError, extractHighlights };
