@@ -6,9 +6,16 @@ const client = new Anthropic();
 const MODEL = 'claude-sonnet-5';
 const MAX_FLASHCARDS = 12;
 
-const SYSTEM_PROMPT = `Si prijazen učni pomočnik za slovenskega osnovnošolca. Iz podane šolske snovi pripraviš učno gradivo v slovenščini.
+// Do te dolžine vira zadostuje en klic (preizkušeno do ~3300 znakov). Daljšo snov razrežemo na dele,
+// ker izpisek zraste 2,5-4-krat: en klic bi zadel strop izhodnih tokenov in trajal več minut.
+const SINGLE_CALL_MAX_CHARS = 4000;
+const CHUNK_CHARS = 3000;
+const CONCURRENCY = 6;
 
-IZPISEK je najpomembnejši del in mora biti BISTVENO OBSEŽNEJŠI od vira. Zajeti mora VSO podano snov — vsako temo, podtemo, definicijo, pravilo, postopek, primer, izjemo, številko, formulo in ime — in jo hkrati RAZLOŽITI, ne le prepisati. Otrok se bo učil samo iz izpiska in izvirne snovi ne bo imel pred seboj. Izpisek naj bo vsaj 1,8-krat daljši od vira; raje predolg kot prekratek, ker ga otrok bere po straneh.
+// Prompt je razdeljen na dele, ker ga uporabljajo tri poti: en klic (kratka snov), klic za del
+// dolge snovi in klic za pripomočke (pojmi, kartončki, kviz) iz že sestavljenega izpiska.
+const PERSONA = `Si prijazen učni pomočnik za slovenskega osnovnošolca. Iz podane šolske snovi pripraviš učno gradivo v slovenščini.`;
+const SUMMARY_RULES = `IZPISEK je najpomembnejši del in mora biti BISTVENO OBSEŽNEJŠI od vira. Zajeti mora VSO podano snov — vsako temo, podtemo, definicijo, pravilo, postopek, primer, izjemo, številko, formulo in ime — in jo hkrati RAZLOŽITI, ne le prepisati. Otrok se bo učil samo iz izpiska in izvirne snovi ne bo imel pred seboj. Izpisek naj bo vsaj 1,8-krat daljši od vira; raje predolg kot prekratek, ker ga otrok bere po straneh.
 
 Vsak pojem, pravilo ali dejstvo iz vira obdelaj v svojem odstavku v tem zaporedju:
 1. Povej, kaj je, v preprostih besedah, primernih razredu.
@@ -23,13 +30,10 @@ Dolžina se ravna po obsegu vira:
 - ena stran zvezka → 12 do 18 odstavkov
 - celo poglavje ali več strani → 25 ali več odstavkov
 
-Vsak odstavek naj ima 4 do 6 stavkov in obravnava eno stvar. Temam sledi po vrsti kot se pojavljajo v viru. Piši v preprostem jeziku, primernem razredu, a nikoli na račun popolnosti. Številk, formul, letnic in imen ne posplošuj — prepiši jih točno.
-
-ZVESTOBA VIRU: ne dodajaj dejstev, imen, letnic, številk ali podrobnosti, ki jih v viru ni — tudi če jih veš iz splošnega znanja. Razlaga in ponazoritev smeta pojasniti in približati snov, ne smeta pa uvajati novih trditev o temi snovi ali o osebah in dogodkih v njej. Številke, imena in letnice smejo biti samo tiste iz vira; v ponazoritvi uporabi besede, ne novih številk o temi. Če vir nečesa ne pove, tega ne piši. Piši naravno, pravilno slovenščino; ne uporabljaj besed ali zvez, za katere nisi prepričan, da obstajajo.
-
-ODSTAVKI IN POUDARKI: izpisek vrni kot seznam odstavkov (polje odstavki). Vsak odstavek ima besedilo in polje poudarki. V poudarke VEDNO vpiši 1 ali 2 najpomembnejša odseka tega odstavka, ki si jih mora otrok zapomniti (definicija, pravilo, formula, ključna lastnost, pomembna letnica ali ime). Vsak poudarek DOBESEDNO prepiši iz besedila istega odstavka, znak za znakom (enake črke, končnice in ločila), in mora biti cela, samostojna misel dolžine 3 do 15 besed, ki jo otrok razume tudi brez preostalega besedila (na primer »Hieroglife je leta 1822 razvozlal Champollion«, ne »leta 1822 ni razvozlal«). Poudarek ni posamezna beseda in ni odrezan košček stavka. Poudarjeno mora biti redko: skupaj največ desetina besedila.
-
-POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mora biti mogoče najti v besedilu izpiska, ki si ga pravkar napisal. Ne sprašuj po ničemer, česar v izpisku ni — tudi če to veš iz splošnega znanja ali je bilo v izvirni snovi, a v izpisek ni prišlo.
+Vsak odstavek naj ima 4 do 6 stavkov in obravnava eno stvar. Temam sledi po vrsti kot se pojavljajo v viru. Piši v preprostem jeziku, primernem razredu, a nikoli na račun popolnosti. Številk, formul, letnic in imen ne posplošuj — prepiši jih točno.`;
+const FAITHFULNESS_RULES = `ZVESTOBA VIRU: ne dodajaj dejstev, imen, letnic, številk ali podrobnosti, ki jih v viru ni — tudi če jih veš iz splošnega znanja. Razlaga in ponazoritev smeta pojasniti in približati snov, ne smeta pa uvajati novih trditev o temi snovi ali o osebah in dogodkih v njej. Številke, imena in letnice smejo biti samo tiste iz vira; v ponazoritvi uporabi besede, ne novih številk o temi. Če vir nečesa ne pove, tega ne piši. Piši naravno, pravilno slovenščino; ne uporabljaj besed ali zvez, za katere nisi prepričan, da obstajajo.`;
+const PARAGRAPH_RULES = `ODSTAVKI IN POUDARKI: izpisek vrni kot seznam odstavkov (polje odstavki). Vsak odstavek ima besedilo in polje poudarki. V poudarke VEDNO vpiši 1 ali 2 najpomembnejša odseka tega odstavka, ki si jih mora otrok zapomniti (definicija, pravilo, formula, ključna lastnost, pomembna letnica ali ime). Vsak poudarek DOBESEDNO prepiši iz besedila istega odstavka, znak za znakom (enake črke, končnice in ločila), in mora biti cela, samostojna misel dolžine 3 do 15 besed, ki jo otrok razume tudi brez preostalega besedila (na primer »Hieroglife je leta 1822 razvozlal Champollion«, ne »leta 1822 ni razvozlal«). Poudarek ni posamezna beseda in ni odrezan košček stavka. Poudarjeno mora biti redko: skupaj največ desetina besedila.`;
+const AIDS_RULES = `POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mora biti mogoče najti v besedilu izpiska, ki si ga pravkar napisal. Ne sprašuj po ničemer, česar v izpisku ni — tudi če to veš iz splošnega znanja ali je bilo v izvirni snovi, a v izpisek ni prišlo.
 
 Število prilagodi obsegu izpiska:
 - pojmi: 5 do 25 ključnih izrazov, ki se v izpisku dejansko pojavijo
@@ -37,6 +41,23 @@ POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mo
 - kviz: 5 do 12 vprašanj s štirimi možnostmi
 
 Kartončki in kviz naj skupaj pokrijejo vse odstavke izpiska — nobena tema ne sme ostati nepreverjena. Kviz naj pokriva različne dele izpiska, ne le prvega odstavka. Razlaga ob odgovoru naj pove, zakaj je pravilen.`;
+
+const SYSTEM_PROMPT = [PERSONA, SUMMARY_RULES, FAITHFULNESS_RULES, PARAGRAPH_RULES, AIDS_RULES].join('\n\n');
+
+const CHUNK_PROMPT = [
+  PERSONA,
+  SUMMARY_RULES,
+  FAITHFULNESS_RULES,
+  PARAGRAPH_RULES,
+  'Dobiš SAMO ENEGA od več delov iste snovi. Obravnavaj samo ta del in v izpisek zajemi vse, kar je v njem. Ne piši uvoda, ki bi predstavljal celotno snov, in ne zaključka; piši, kot da bi bralec že prebral prejšnje dele. Vrni samo polje odstavki.',
+].join('\n\n');
+
+const AIDS_PROMPT = [
+  PERSONA.split('\n')[0],
+  'Dobiš že napisan izpisek učne snovi. Iz njega pripraviš naslov, kratek podnaslov (kicker, na primer predmet in razred), ključne pojme, kartončke in kviz.',
+  AIDS_RULES,
+  'Kartončki in kviz naj obsegajo vse dele izpiska od začetka do konca, ne le prvega.',
+].join('\n\n');
 
 // Structured outputs: API zagotovi, da je odgovor veljaven JSON po tej shemi (brez markdown ovojev)
 const OUTPUT_SCHEMA = {
@@ -88,6 +109,27 @@ const OUTPUT_SCHEMA = {
   additionalProperties: false,
 };
 
+
+const AIDS_SCHEMA = {
+  type: 'object',
+  properties: {
+    kicker: OUTPUT_SCHEMA.properties.kicker,
+    naslov: OUTPUT_SCHEMA.properties.naslov,
+    pojmi: OUTPUT_SCHEMA.properties.pojmi,
+    kartoncki: OUTPUT_SCHEMA.properties.kartoncki,
+    kviz: OUTPUT_SCHEMA.properties.kviz,
+  },
+  required: ['kicker', 'naslov', 'pojmi', 'kartoncki', 'kviz'],
+  additionalProperties: false,
+};
+
+const CHUNK_SCHEMA = {
+  type: 'object',
+  properties: { odstavki: OUTPUT_SCHEMA.properties.odstavki },
+  required: ['odstavki'],
+  additionalProperties: false,
+};
+
 class GenerationError extends Error {
   constructor(message, status = 502) {
     super(message);
@@ -95,27 +137,15 @@ class GenerationError extends Error {
   }
 }
 
-async function generateMaterial({ text, image, subject, grade }) {
-  const intro = `Predmet: ${subject}\nRazred: ${grade}. razred osnovne šole`;
-  const content = image
-    ? [
-        { type: 'image', source: { type: 'base64', media_type: image.media_type, data: image.data } },
-        {
-          type: 'text',
-          text: `${intro}\n\nŠolska snov je na fotografiji (stran iz zvezka ali delovni list). Preberi celotno fotografijo, tudi robove in morebitne opombe, in v izpisek zajemi vse, kar je na njej.`,
-        },
-      ]
-    : `${intro}\n\nŠolska snov:\n${text}\n\nV izpisek zajemi vso zgornjo snov, od začetka do konca.`;
-
+// Skupni klic: napake API-ja se prevedejo v sporočila za uporabnika na enem mestu
+async function callClaude({ system, content, schema, maxTokens = 16000 }) {
   let response;
   try {
     response = await client.messages.create({
       model: MODEL,
-      // Izpisek celega poglavja (15+ odstavkov) skupaj s kartončki in kvizom preseže
-      // nekaj tisoč tokenov; prenizek strop bi vrnil "max_tokens" in napako uporabniku
-      max_tokens: 16000,
-      system: SYSTEM_PROMPT,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
+      max_tokens: maxTokens,
+      system,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema } },
       messages: [{ role: 'user', content }],
     });
   } catch (err) {
@@ -135,33 +165,152 @@ async function generateMaterial({ text, image, subject, grade }) {
     throw new GenerationError('Iz te snovi ni bilo mogoče ustvariti gradiva.', 422);
   }
   if (response.stop_reason === 'max_tokens') {
-    throw new GenerationError('Snov je preobsežna za eno generacijo. Razdeli jo na manjše dele.', 422);
+    throw new GenerationError('Ta del snovi je preobsežen za obdelavo. Poskusi z manjšim delom.', 422);
   }
+  return JSON.parse(response.content.find(block => block.type === 'text').text);
+}
 
-  const textBlock = response.content.find(block => block.type === 'text');
-  const material = JSON.parse(textBlock.text);
+const validQuiz = quiz =>
+  quiz.every(q => q.opcije.length >= 2 && q.pravilni_index >= 0 && q.pravilni_index < q.opcije.length);
 
-  const quizValid = material.kviz.every(
-    q => q.opcije.length >= 2 && q.pravilni_index >= 0 && q.pravilni_index < q.opcije.length
-  );
-  if (!quizValid) {
+// Prehodna napaka pri enem delu (502/503) ne sme podreti cele snovi: poskusimo še enkrat
+async function withRetry(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof GenerationError && (err.status === 502 || err.status === 503)) return fn();
+    throw err;
+  }
+}
+
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+// Naslov brez končnega ločila ne sme ostati sam na koncu dela — sodi k besedilu za njim
+const looksLikeHeading = line => line.length <= 80 && !/[.!?:;,]$/.test(line);
+
+function splitLongBlock(block) {
+  const sentences = block.match(/[^.!?]+[.!?]+["»)]*\s*|[^.!?]+$/g) || [block];
+  const parts = [];
+  let current = '';
+  for (const sentence of sentences) {
+    if (current && current.length + sentence.length > CHUNK_CHARS) {
+      parts.push(current.trim());
+      current = '';
+    }
+    current += sentence;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+// Reže po odstavkih in naslovih, nikoli sredi odstavka (razen če je en sam odstavek daljši od dela)
+function splitSource(text) {
+  const blocks = text
+    .split(/\n+/)
+    .map(b => b.trim())
+    .filter(Boolean)
+    .flatMap(b => (b.length > CHUNK_CHARS ? splitLongBlock(b) : [b]));
+
+  const chunks = [];
+  let current = [];
+  let size = 0;
+  for (const block of blocks) {
+    if (current.length > 0 && size + block.length > CHUNK_CHARS) {
+      const orphan = current.length > 1 && looksLikeHeading(current[current.length - 1]) ? current.pop() : null;
+      chunks.push(current.join('\n'));
+      current = orphan ? [orphan] : [];
+      size = current.reduce((sum, b) => sum + b.length, 0);
+    }
+    current.push(block);
+    size += block.length;
+  }
+  if (current.length > 0) chunks.push(current.join('\n'));
+
+  // Zadnji drobec (npr. ena vrstica) združimo s prejšnjim delom
+  if (chunks.length > 1 && chunks[chunks.length - 1].length < 400) {
+    const last = chunks.pop();
+    chunks[chunks.length - 1] += '\n' + last;
+  }
+  return chunks;
+}
+
+function finish(material, paragraphs) {
+  if (!validQuiz(material.kviz)) {
     throw new GenerationError('AI je vrnil neveljaven kviz. Poskusi znova.', 502);
   }
-
   // Izpisek in poudarke sestavimo iz strukturiranih odstavkov. Shranjena oblika ostane ista
   // (izpisek kot niz, poudarki kot seznam), zato ostalo kodo to ne zadeva.
-  const { izpisek, poudarki } = assembleSummary(material.odstavki);
+  const { izpisek, poudarki } = assembleSummary(paragraphs);
   if (!izpisek) {
     throw new GenerationError('AI je vrnil prazen izpisek. Poskusi znova.', 502);
   }
-  // Varovalka: model navodilo o številu kartončkov včasih preseže. Kartončki si sledijo po snovi,
-  // zato je bolje, da jih omeji prompt (porazdelitev čez vso snov) — to je le zadnja meja.
-  material.kartoncki = material.kartoncki.slice(0, MAX_FLASHCARDS);
-  delete material.odstavki;
-  material.izpisek = izpisek;
-  material.poudarki = poudarki;
+  return {
+    kicker: material.kicker,
+    naslov: material.naslov,
+    izpisek,
+    poudarki,
+    pojmi: material.pojmi,
+    // Varovalka: model navodilo o številu kartončkov včasih preseže
+    kartoncki: material.kartoncki.slice(0, MAX_FLASHCARDS),
+    kviz: material.kviz,
+  };
+}
 
-  return material;
+// Dolga snov: dele izpišemo vzporedno, nato iz celotnega izpiska naredimo kartončke in kviz
+async function generateLong({ text, subject, grade }) {
+  const intro = `Predmet: ${subject}\nRazred: ${grade}. razred osnovne šole`;
+  const chunks = splitSource(text);
+
+  const parts = await mapLimit(chunks, CONCURRENCY, (chunk, i) =>
+    withRetry(() =>
+      callClaude({
+        system: CHUNK_PROMPT,
+        schema: CHUNK_SCHEMA,
+        content: `${intro}\n\nTo je del ${i + 1} od ${chunks.length} iste snovi. V izpisek zajemi vse, kar je v njem, od začetka do konca.\n\nDel snovi:\n${chunk}`,
+      })
+    )
+  );
+  const paragraphs = parts.flatMap(part => part.odstavki);
+  const { izpisek } = assembleSummary(paragraphs);
+  if (!izpisek) throw new GenerationError('AI je vrnil prazen izpisek. Poskusi znova.', 502);
+
+  const aids = await withRetry(() =>
+    callClaude({
+      system: AIDS_PROMPT,
+      schema: AIDS_SCHEMA,
+      content: `${intro}\n\nIzpisek:\n${izpisek}`,
+    })
+  );
+  return finish(aids, paragraphs);
+}
+
+async function generateMaterial({ text, image, subject, grade }) {
+  if (!image && text.length > SINGLE_CALL_MAX_CHARS) return generateLong({ text, subject, grade });
+
+  const intro = `Predmet: ${subject}\nRazred: ${grade}. razred osnovne šole`;
+  const content = image
+    ? [
+        { type: 'image', source: { type: 'base64', media_type: image.media_type, data: image.data } },
+        {
+          type: 'text',
+          text: `${intro}\n\nŠolska snov je na fotografiji (stran iz zvezka ali delovni list). Preberi celotno fotografijo, tudi robove in morebitne opombe, in v izpisek zajemi vse, kar je na njej.`,
+        },
+      ]
+    : `${intro}\n\nŠolska snov:\n${text}\n\nV izpisek zajemi vso zgornjo snov, od začetka do konca.`;
+
+  const material = await callClaude({ system: SYSTEM_PROMPT, schema: OUTPUT_SCHEMA, content });
+  return finish(material, material.odstavki);
 }
 
 // Meje, ki jih model ne more preseči, ne glede na to, kaj vrne

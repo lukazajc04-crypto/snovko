@@ -11,7 +11,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 
 const COST = 2;
 const MIN_TEXT = 30;
-const MAX_TEXT = 30000;
+const MAX_TEXT = 40000;
 
 const getBalance = db.prepare('SELECT balance FROM credits WHERE user_id = ?');
 const deductCredits = db.prepare(
