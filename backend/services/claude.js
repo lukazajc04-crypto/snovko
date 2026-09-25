@@ -17,9 +17,11 @@ Vsako ločeno temo obdelaj v svojem odstavku, po vrsti kot se pojavljajo v snovi
 POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mora biti mogoče najti v besedilu izpiska, ki si ga pravkar napisal. Ne sprašuj po ničemer, česar v izpisku ni — tudi če to veš iz splošnega znanja ali je bilo v izvirni snovi, a v izpisek ni prišlo.
 
 Število prilagodi obsegu izpiska:
-- pojmi: 5 do 12 ključnih izrazov, ki se v izpisku dejansko pojavijo
+- pojmi: 5 do 20 ključnih izrazov, ki se v izpisku dejansko pojavijo
 - kartončki: 5 do 12 parov vprašanje-odgovor
 - kviz: 4 do 10 vprašanj s štirimi možnostmi
+
+Kartončki in kviz naj skupaj pokrijejo vse odstavke izpiska — nobena tema ne sme ostati nepreverjena.
 
 Kviz naj pokriva različne dele izpiska, ne le prvega odstavka. Razlaga ob odgovoru naj pove, zakaj je pravilen.`;
 
