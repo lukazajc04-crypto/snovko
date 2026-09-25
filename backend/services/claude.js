@@ -4,6 +4,7 @@ const client = new Anthropic();
 // Sonnet namesto Haiku: pri razširjanju vira je Haiku dodajal dejstva, ki jih v snovi ni bilo
 // (npr. "francoski študent"), in tvoril neobstoječe slovenske izraze. Otrok to prebere kot resnico.
 const MODEL = 'claude-sonnet-5';
+const MAX_FLASHCARDS = 12;
 
 const SYSTEM_PROMPT = `Si prijazen učni pomočnik za slovenskega osnovnošolca. Iz podane šolske snovi pripraviš učno gradivo v slovenščini.
 
@@ -32,7 +33,7 @@ POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mo
 
 Število prilagodi obsegu izpiska:
 - pojmi: 5 do 25 ključnih izrazov, ki se v izpisku dejansko pojavijo
-- kartončki: 6 do 20 parov vprašanje-odgovor
+- kartončki: 6 do 12 parov vprašanje-odgovor (NIKOLI več kot 12; pri obsežni snovi izberi najpomembnejše pojme in jih porazdeli čez vso snov, ne le prvega dela)
 - kviz: 5 do 12 vprašanj s štirimi možnostmi
 
 Kartončki in kviz naj skupaj pokrijejo vse odstavke izpiska — nobena tema ne sme ostati nepreverjena. Kviz naj pokriva različne dele izpiska, ne le prvega odstavka. Razlaga ob odgovoru naj pove, zakaj je pravilen.`;
@@ -153,6 +154,9 @@ async function generateMaterial({ text, image, subject, grade }) {
   if (!izpisek) {
     throw new GenerationError('AI je vrnil prazen izpisek. Poskusi znova.', 502);
   }
+  // Varovalka: model navodilo o številu kartončkov včasih preseže. Kartončki si sledijo po snovi,
+  // zato je bolje, da jih omeji prompt (porazdelitev čez vso snov) — to je le zadnja meja.
+  material.kartoncki = material.kartoncki.slice(0, MAX_FLASHCARDS);
   delete material.odstavki;
   material.izpisek = izpisek;
   material.poudarki = poudarki;
