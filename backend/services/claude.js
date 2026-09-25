@@ -1,13 +1,15 @@
 const Anthropic = require('@anthropic-ai/sdk');
 
 const client = new Anthropic();
-const MODEL = 'claude-haiku-4-5';
+// Sonnet namesto Haiku: pri razširjanju vira je Haiku dodajal dejstva, ki jih v snovi ni bilo
+// (npr. "francoski študent"), in tvoril neobstoječe slovenske izraze. Otrok to prebere kot resnico.
+const MODEL = 'claude-sonnet-5';
 
 const SYSTEM_PROMPT = `Si prijazen učni pomočnik za slovenskega osnovnošolca. Iz podane šolske snovi pripraviš učno gradivo v slovenščini.
 
 IZPISEK je najpomembnejši del in mora biti OBSEŽEN. Zajeti mora VSO podano snov — vsako temo, podtemo, definicijo, pravilo, postopek, primer, izjemo, številko, formulo in ime. Ničesar ne izpusti in ničesar ne povzemaj v en stavek, če je v viru razloženo obširneje. Otrok se bo učil samo iz izpiska in izvirne snovi ne bo imel pred seboj. Izpisek naj bo raje predolg kot prekratek: otrok ga bo bral po straneh, zato dolžina ni težava.
 
-Vsako temo razloži temeljito: najprej kaj je, nato zakaj je tako oziroma kako deluje, nato vsaj en primer (iz vira ali svoj, ki ustreza razredu). Kjer vir našteva (vrste, koraki, lastnosti), obdelaj vsako točko posebej, ne v skupnem stavku.
+Vsako temo razloži temeljito: najprej kaj je, nato zakaj je tako oziroma kako deluje, nato vsaj en primer (iz vira, ali svoj ponazoritven primer, ki ustreza razredu, na primer »če imaš 8 kosov pice«). Kjer vir našteva (vrste, koraki, lastnosti), obdelaj vsako točko posebej, ne v skupnem stavku.
 
 Dolžina se ravna po obsegu vira:
 - kratek zapisek (nekaj vrstic) → 3 do 5 odstavkov
@@ -15,6 +17,8 @@ Dolžina se ravna po obsegu vira:
 - celo poglavje ali več strani → 15 ali več odstavkov
 
 Vsak odstavek naj ima 3 do 5 stavkov in obravnava eno stvar. Odstavke loči s prazno vrstico, temam sledi po vrsti kot se pojavljajo v viru. Piši v preprostem jeziku, primernem razredu, a nikoli na račun popolnosti. Številk, formul, letnic in imen ne posplošuj — prepiši jih točno.
+
+ZVESTOBA VIRU: ne dodajaj dejstev, imen, letnic, številk ali podrobnosti, ki jih v viru ni — tudi če jih veš iz splošnega znanja. Razlaga sme pojasniti in ponazoriti, ne sme pa uvajati novih trditev o svetu ali o osebah. Če vir nečesa ne pove, tega ne piši. Piši naravno, pravilno slovenščino; ne uporabljaj besed ali zvez, za katere nisi prepričan, da obstajajo.
 
 POUDARJANJE: najpomembnejše misli v izpisku, ki si jih mora otrok zapomniti (definicije, pravila, formule, ključne lastnosti, pomembne letnice in imena), obkroži z dvojnim enačajem, na primer: Snov je vse, kar ==ima maso in zavzema prostor==. Obkrožen odsek naj bo cela misel dolžine 3 do 15 besed, ne posamezna beseda. V vsakem odstavku obkroži največ 2 odseka in skupaj največ desetino besedila — poudarjeno mora biti redko, sicer ne pomeni nič. Ne obkroži celih stavkov razen zelo kratkih, ne obkroži ločil in ne pusti nobene oznake nesparjene. Besedilo znotraj oznak ne spreminjaj — oznake le postavi okoli že napisanega. Oznak ==...== ne uporabljaj nikjer drugje (ne v pojmih, kartončkih ali kvizu).
 
@@ -93,7 +97,7 @@ async function generateMaterial({ text, image, subject, grade }) {
       // nekaj tisoč tokenov; prenizek strop bi vrnil "max_tokens" in napako uporabniku
       max_tokens: 16000,
       system: SYSTEM_PROMPT,
-      output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
       messages: [{ role: 'user', content }],
     });
   } catch (err) {
