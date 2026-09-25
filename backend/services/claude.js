@@ -5,25 +5,27 @@ const MODEL = 'claude-haiku-4-5';
 
 const SYSTEM_PROMPT = `Si prijazen učni pomočnik za slovenskega osnovnošolca. Iz podane šolske snovi pripraviš učno gradivo v slovenščini.
 
-IZPISEK je najpomembnejši del. Zajeti mora VSO podano snov — vsako temo, podtemo, definicijo, pravilo, postopek, primer in izjemo, ki se v njej pojavi. Ničesar ne izpusti, tudi če se ti zdi manj pomembno. Otrok se bo učil iz izpiska in ne bo imel izvirne snovi pred seboj.
+IZPISEK je najpomembnejši del in mora biti OBSEŽEN. Zajeti mora VSO podano snov — vsako temo, podtemo, definicijo, pravilo, postopek, primer, izjemo, številko, formulo in ime. Ničesar ne izpusti in ničesar ne povzemaj v en stavek, če je v viru razloženo obširneje. Otrok se bo učil samo iz izpiska in izvirne snovi ne bo imel pred seboj. Izpisek naj bo raje predolg kot prekratek: otrok ga bo bral po straneh, zato dolžina ni težava.
 
-Dolžina izpiska se ravna po obsegu snovi, ne po vnaprejšnjem številu odstavkov:
-- kratek zapisek (nekaj vrstic) → 1 do 2 odstavka
-- ena stran zvezka → 3 do 5 odstavkov
-- celo poglavje ali več strani → 8 ali več odstavkov
+Vsako temo razloži temeljito: najprej kaj je, nato zakaj je tako oziroma kako deluje, nato vsaj en primer (iz vira ali svoj, ki ustreza razredu). Kjer vir našteva (vrste, koraki, lastnosti), obdelaj vsako točko posebej, ne v skupnem stavku.
 
-Vsako ločeno temo obdelaj v svojem odstavku, po vrsti kot se pojavljajo v snovi. Odstavke loči s prazno vrstico. Piši v preprostem jeziku, primernem razredu, a ne na račun popolnosti: raje daljši izpisek kot izpuščena snov. Številk, formul, letnic in imen ne posplošuj — prepiši jih točno.
+Dolžina se ravna po obsegu vira:
+- kratek zapisek (nekaj vrstic) → 3 do 5 odstavkov
+- ena stran zvezka → 8 do 12 odstavkov
+- celo poglavje ali več strani → 15 ali več odstavkov
+
+Vsak odstavek naj ima 3 do 5 stavkov in obravnava eno stvar. Odstavke loči s prazno vrstico, temam sledi po vrsti kot se pojavljajo v viru. Piši v preprostem jeziku, primernem razredu, a nikoli na račun popolnosti. Številk, formul, letnic in imen ne posplošuj — prepiši jih točno.
+
+POUDARKI so najpomembnejše misli iz izpiska, ki si jih mora otrok zapomniti: definicije, pravila, formule, ključne lastnosti. Vsak poudarek je KRATEK ODSEK (3 do 15 besed), ki ga DOBESEDNO in v celoti prepišeš iz izpiska, natanko tako, kot je tam napisan (enake črke, enaka končnica, enaka ločila). Ne parafraziraj in ne krajšaj sredi stavka. V vsakem odstavku poudari 1 do 2 odseka; poudarek naj ne bo posamezna beseda, ampak misel, ki jo otrok, ko jo prebere, zna povedati sam.
 
 POJMI, KARTONČKI in KVIZ morajo izhajati IZKLJUČNO iz izpiska. Vsak odgovor mora biti mogoče najti v besedilu izpiska, ki si ga pravkar napisal. Ne sprašuj po ničemer, česar v izpisku ni — tudi če to veš iz splošnega znanja ali je bilo v izvirni snovi, a v izpisek ni prišlo.
 
 Število prilagodi obsegu izpiska:
-- pojmi: 5 do 20 ključnih izrazov, ki se v izpisku dejansko pojavijo
-- kartončki: 5 do 12 parov vprašanje-odgovor
-- kviz: 4 do 10 vprašanj s štirimi možnostmi
+- pojmi: 5 do 25 ključnih izrazov, ki se v izpisku dejansko pojavijo
+- kartončki: 6 do 20 parov vprašanje-odgovor
+- kviz: 5 do 12 vprašanj s štirimi možnostmi
 
-Kartončki in kviz naj skupaj pokrijejo vse odstavke izpiska — nobena tema ne sme ostati nepreverjena.
-
-Kviz naj pokriva različne dele izpiska, ne le prvega odstavka. Razlaga ob odgovoru naj pove, zakaj je pravilen.`;
+Kartončki in kviz naj skupaj pokrijejo vse odstavke izpiska — nobena tema ne sme ostati nepreverjena. Kviz naj pokriva različne dele izpiska, ne le prvega odstavka. Razlaga ob odgovoru naj pove, zakaj je pravilen.`;
 
 // Structured outputs: API zagotovi, da je odgovor veljaven JSON po tej shemi (brez markdown ovojev)
 const OUTPUT_SCHEMA = {
@@ -32,6 +34,7 @@ const OUTPUT_SCHEMA = {
     kicker: { type: 'string' },
     naslov: { type: 'string' },
     izpisek: { type: 'string' },
+    poudarki: { type: 'array', items: { type: 'string' } },
     pojmi: { type: 'array', items: { type: 'string' } },
     kartoncki: {
       type: 'array',
@@ -60,7 +63,7 @@ const OUTPUT_SCHEMA = {
       },
     },
   },
-  required: ['kicker', 'naslov', 'izpisek', 'pojmi', 'kartoncki', 'kviz'],
+  required: ['kicker', 'naslov', 'izpisek', 'poudarki', 'pojmi', 'kartoncki', 'kviz'],
   additionalProperties: false,
 };
 
@@ -87,9 +90,9 @@ async function generateMaterial({ text, image, subject, grade }) {
   try {
     response = await client.messages.create({
       model: MODEL,
-      // Obsežno poglavje z 12 kartončki in 10 vprašanji preseže 4096 tokenov in bi
-      // padlo na stop_reason "max_tokens"
-      max_tokens: 8192,
+      // Izpisek celega poglavja (15+ odstavkov) skupaj s kartončki in kvizom preseže
+      // nekaj tisoč tokenov; prenizek strop bi vrnil "max_tokens" in napako uporabniku
+      max_tokens: 16000,
       system: SYSTEM_PROMPT,
       output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
       messages: [{ role: 'user', content }],
@@ -124,7 +127,23 @@ async function generateMaterial({ text, image, subject, grade }) {
     throw new GenerationError('AI je vrnil neveljaven kviz. Poskusi znova.', 502);
   }
 
+  material.poudarki = validHighlights(material.izpisek, material.poudarki);
+
   return material;
+}
+
+// Poudarek mora biti dobesedni odsek izpiska, sicer ga odjemalec ne bi našel in bi ostal
+// nepoudarjen. Model tega v shemi ni mogoče prisiliti, zato neveljavne zavržemo tukaj.
+function validHighlights(izpisek, highlights) {
+  const seen = new Set();
+  return (highlights || [])
+    .map(h => String(h).trim())
+    .filter(h => {
+      const words = h.split(/\s+/).length;
+      if (words < 2 || words > 25 || seen.has(h) || !izpisek.includes(h)) return false;
+      seen.add(h);
+      return true;
+    });
 }
 
 module.exports = { generateMaterial, GenerationError };

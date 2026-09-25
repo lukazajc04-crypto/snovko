@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import NoteCard from '../components/NoteCard';
@@ -66,6 +66,45 @@ function renderParagraph(text, termRanges, currentWord) {
     segments.push({ text: text.slice(start, end), isTerm, isCurrent });
   }
   return segments;
+}
+
+// Poudarki so dobesedni odseki izpiska, ki jih je izbral model (definicije, pravila, formule).
+// Vsak poiščemo v prvem odstavku, kjer se pojavi; prekrivajoče se preskočimo.
+function computeHighlightRanges(paragraphs, highlights) {
+  const ranges = paragraphs.map(() => []);
+  highlights.forEach(raw => {
+    const needle = String(raw).trim();
+    if (!needle) return;
+    for (let pi = 0; pi < paragraphs.length; pi++) {
+      const start = paragraphs[pi].indexOf(needle);
+      if (start === -1) continue;
+      const end = start + needle.length;
+      if (!ranges[pi].some(o => start < o.end && end > o.start)) ranges[pi].push({ start, end });
+      break;
+    }
+  });
+  ranges.forEach(r => r.sort((a, b) => a.start - b.start));
+  return ranges;
+}
+
+// Izpisek je dolg, zato ga otrok bere po straneh; odstavka ne režemo na pol
+const PAGE_CHARS = 900;
+
+function paginate(paragraphs) {
+  const pages = [];
+  let current = [];
+  let size = 0;
+  paragraphs.forEach((text, i) => {
+    if (current.length > 0 && size + text.length > PAGE_CHARS) {
+      pages.push(current);
+      current = [];
+      size = 0;
+    }
+    current.push(i);
+    size += text.length;
+  });
+  if (current.length > 0) pages.push(current);
+  return pages.length > 0 ? pages : [[]];
 }
 
 // Starejša gradiva imajo izpisek kot en sam dolg odstavek; razdelimo ga po stavkih na tri približno enake dele
@@ -312,10 +351,13 @@ export default function Results() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(0);
+  const textRef = useRef(null);
 
   useEffect(() => {
     setData(null);
     setError('');
+    setPage(0);
     api
       .get(`/api/generations/${id}`)
       .then(res => setData(res.data))
@@ -323,8 +365,44 @@ export default function Results() {
   }, [id]);
 
   const paragraphs = useMemo(() => (data ? splitParagraphs(data.content.izpisek) : []), [data]);
-  const termRanges = useMemo(() => computeTermRanges(paragraphs, data?.content.pojmi ?? []), [paragraphs, data]);
+  // Novejša gradiva imajo poudarke; starejša (brez njih) poudarijo le ključne pojme
+  const termRanges = useMemo(() => {
+    const highlights = data?.content.poudarki ?? [];
+    const byHighlight = computeHighlightRanges(paragraphs, highlights);
+    if (byHighlight.some(r => r.length > 0)) return byHighlight;
+    return computeTermRanges(paragraphs, data?.content.pojmi ?? []);
+  }, [paragraphs, data]);
+  const pages = useMemo(() => paginate(paragraphs), [paragraphs]);
   const voice = useVoiceReader(paragraphs);
+
+  const goTo = useCallback(
+    next => {
+      setPage(Math.min(Math.max(next, 0), pages.length - 1));
+      // Po vrnitvi naslednji strani začnemo brati od vrha, ne od sredine
+      requestAnimationFrame(() => textRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+    },
+    [pages.length]
+  );
+
+  // Glasovno branje samo prelista na stran, ki jo trenutno bere
+  const readingParagraph = voice.currentWord?.paragraphIndex;
+  useEffect(() => {
+    if (readingParagraph == null) return;
+    const target = pages.findIndex(indexes => indexes.includes(readingParagraph));
+    if (target !== -1) setPage(target);
+  }, [readingParagraph, pages]);
+
+  // Puščici na tipkovnici listata strani, razen med pisanjem v polje
+  useEffect(() => {
+    function onKey(e) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+      if (e.key === 'ArrowRight') goTo(page + 1);
+      if (e.key === 'ArrowLeft') goTo(page - 1);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [goTo, page]);
 
   async function saveQuiz(score, total) {
     try {
@@ -363,33 +441,80 @@ export default function Results() {
             Natisni
           </button>
         </div>
-        <div className="summary-text">
-          {paragraphs.map((text, pi) => (
+        <div className="summary-text" ref={textRef}>
+          {(pages[page] ?? []).map(pi => (
             <p key={pi}>
-              {renderParagraph(text, termRanges[pi] ?? [], voice.currentWord?.paragraphIndex === pi ? voice.currentWord : null).map(
-                (seg, si) =>
-                  seg.isTerm || seg.isCurrent ? (
-                    <mark key={si} className={`${seg.isTerm ? 'hl' : ''} ${seg.isCurrent ? 'tts-current' : ''}`.trim()}>
-                      {seg.text}
-                    </mark>
-                  ) : (
-                    <Fragment key={si}>{seg.text}</Fragment>
-                  )
+              {renderParagraph(
+                paragraphs[pi],
+                termRanges[pi] ?? [],
+                voice.currentWord?.paragraphIndex === pi ? voice.currentWord : null
+              ).map((seg, si) =>
+                seg.isTerm || seg.isCurrent ? (
+                  <mark key={si} className={`${seg.isTerm ? 'hl' : ''} ${seg.isCurrent ? 'tts-current' : ''}`.trim()}>
+                    {seg.text}
+                  </mark>
+                ) : (
+                  <Fragment key={si}>{seg.text}</Fragment>
+                )
               )}
             </p>
           ))}
         </div>
 
+        {pages.length > 1 && (
+          <nav className="reading-nav" aria-label="Strani izpiska">
+            <button
+              type="button"
+              className="btn btn-small"
+              onClick={() => goTo(page - 1)}
+              disabled={page === 0}
+              aria-label="Prejšnja stran"
+            >
+              ←
+            </button>
+            <div className="reading-track">
+              <div className="reading-dots">
+                {pages.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`reading-dot ${i === page ? 'is-current' : ''} ${i < page ? 'is-read' : ''}`}
+                    onClick={() => goTo(i)}
+                    aria-label={`Stran ${i + 1}`}
+                    aria-current={i === page ? 'page' : undefined}
+                  />
+                ))}
+              </div>
+              <span className="reading-count">
+                Stran {page + 1} od {pages.length}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-small"
+              onClick={() => goTo(page + 1)}
+              disabled={page === pages.length - 1}
+              aria-label="Naslednja stran"
+            >
+              Naprej →
+            </button>
+          </nav>
+        )}
+
         <VoiceReaderCard {...voice} />
 
-        <h2 className="terms-title">Ključni pojmi</h2>
-        <ul className="term-list">
-          {content.pojmi.map((term, i) => (
-            <li key={term} style={{ '--tilt': `${i % 2 === 0 ? -0.5 : 0.5}deg` }}>
-              {term}
-            </li>
-          ))}
-        </ul>
+        {page === pages.length - 1 && (
+          <>
+            <h2 className="terms-title">Ključni pojmi</h2>
+            <ul className="term-list">
+              {content.pojmi.map((term, i) => (
+                <li key={term} style={{ '--tilt': `${i % 2 === 0 ? -0.5 : 0.5}deg` }}>
+                  {term}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </article>
 
       <aside className="results-notes" aria-label="Učenje">
