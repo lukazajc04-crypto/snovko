@@ -111,7 +111,7 @@ export default function UploadZone({ onSubmit, disabled, variant = 'material' })
       : pastedCredits !== null
         ? `Ustvari gradivo · ${pastedCredits} kredite`
         : file && isImage(file)
-          ? 'Ustvari gradivo · 2 kredita'
+          ? 'Ustvari gradivo · 3 kredite'
           : config.submit;
 
   return (
@@ -182,7 +182,7 @@ export default function UploadZone({ onSubmit, disabled, variant = 'material' })
 
       {error && <p className="form-error" role="alert">{error}</p>}
       {variant === 'material' && (pastedCredits ?? 2) > 2 && (
-        <p className="hand-note">Daljša snov porabi več kreditov: 2 kredita na vsako stran.</p>
+        <p className="hand-note">Daljša snov porabi več kreditov: 3 kredite na vsako stran.</p>
       )}
 
       <div className="upload-actions">

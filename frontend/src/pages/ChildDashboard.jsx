@@ -241,7 +241,7 @@ export default function ChildDashboard() {
             {
               targetRef: creditRef,
               title: 'Tvoji krediti',
-              text: 'Ena stran snovi porabi 2 kredita, daljša snov več. Krediti se obnovijo vsak mesec.',
+              text: 'Ena stran snovi porabi 3 kredite, daljša snov več. Krediti se obnovijo vsak mesec.',
               buttonLabel: 'Začnimo! ✓',
             },
           ]}

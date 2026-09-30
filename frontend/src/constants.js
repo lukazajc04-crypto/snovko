@@ -11,13 +11,13 @@ export const SUBJECTS = [
   'Ostalo',
 ];
 
-export const GENERATION_COST = 2;
+export const GENERATION_COST = 3;
 
 // Ista pravila kot backend/services/credits.js — spremeni obe hkrati.
-// Ena stran (do 4000 znakov) = 2 kredita, za vsakih nadaljnjih 3000 znakov še 2.
+// Ena stran (do 4000 znakov) = 3 kredite, za vsakih nadaljnjih 3000 znakov še 3.
 export function creditsForText(chars) {
-  if (chars <= 4000) return 2;
-  return 2 + 2 * Math.ceil((chars - 4000) / 3000);
+  if (chars <= 4000) return 3;
+  return 3 + 3 * Math.ceil((chars - 4000) / 3000);
 }
 
 export function formatDate(sqliteDate, options = { day: 'numeric', month: 'long' }) {

@@ -20,8 +20,10 @@ const findById = db.prepare('SELECT id, email, name, role FROM users WHERE id = 
 const insertUser = db.prepare(
   'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)'
 );
-// Brezplačni preizkusni krediti, dokler Stripe ni nastavljen — 20 generacij ali pregledov
-const FREE_TRIAL_CREDITS = 40;
+// Brezplačni preizkusni krediti — dovolj za preizkus (3 strani ali nekaj pregledov/učnih
+// listov), premalo za zlorabo z več registracijami. Prej 40, kar je pri neplačujočem
+// registriranju stalo ~1,40 € na račun.
+const FREE_TRIAL_CREDITS = 10;
 const grantTrialCredits = db.prepare('INSERT INTO credits (user_id, balance) VALUES (?, ?)');
 
 const RESET_TTL_MINUTES = 60;

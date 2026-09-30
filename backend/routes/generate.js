@@ -5,7 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { generateMaterial, GenerationError } = require('../services/claude');
 const { extractFromFile, ExtractError } = require('../services/extract');
 const { findChildForUser, childNotFoundMessage } = require('../services/access');
-const { creditsForText, creditsForImage } = require('../services/credits');
+const { creditsForText, creditsForImage, BASE_CREDITS } = require('../services/credits');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -37,9 +37,9 @@ const chargeAndSave = db.transaction((parentId, childId, subject, material, cost
 function notEnoughCredits(res, balance, cost) {
   return res.status(402).json({
     error:
-      cost > 2
-        ? `Ta snov je daljša, zato porabi ${cost} kreditov (2 kredita na stran), na voljo imaš ${balance}.`
-        : `Za generiranje potrebuješ ${cost} kredita, na voljo imaš ${balance}.`,
+      cost > BASE_CREDITS
+        ? `Ta snov je daljša, zato porabi ${cost} kreditov (${BASE_CREDITS} kredite na stran), na voljo imaš ${balance}.`
+        : `Za generiranje potrebuješ ${cost} kreditov, na voljo imaš ${balance}.`,
     code: 'NO_CREDITS',
     needed: cost,
   });

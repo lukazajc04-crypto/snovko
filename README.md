@@ -89,8 +89,8 @@ cd backend && node scripts/add-credits.js stars@primer.si 100 basic
 3. **Krediti**: izberi paket na `/subscription` ali uporabi `scripts/add-credits.js`.
 4. **Otrok** v drugem brskalniku (ali po odjavi starša) na `/register` izbere »Sem učenec« in vpiše kodo.
    Kodo lahko vpiše tudi kasneje na svoji strani.
-5. **Otrok naloži snov** na `/child` → po ~20 sekundah se odpre `/results/:id` z izpiskom, kartončki in kvizom.
-   Vsaka generacija porabi 2 kredita staršu.
+5. **Otrok naloži snov** na `/child` → po 40–120 sekundah (odvisno od dolžine) se odpre `/results/:id` z izpiskom,
+   kartončki in kvizom. Ena stran porabi 3 kredite staršu, daljša snov sorazmerno več (glej spodaj).
 6. **Pregled rešenega lista**: otrok na `/child` izbere »Preglej rešen list« in naloži fotografijo. Po ~30–40
    sekundah se odpre `/checks/:id` s kljukicami, križci in pripisanimi rešitvami na fotografiji ter seznamom nalog
    z razlagami. Stane 2 kredita; če na fotografiji ni nalog, se krediti ne odštejejo.
@@ -99,13 +99,17 @@ cd backend && node scripts/add-credits.js stars@primer.si 100 basic
 
 ## Krediti in paketi
 
-| Paket | Cena | Krediti / mesec | Otroci |
-|---|---|---|---|
-| Basic | 9,90 € | 100 (50 gradiv) | 1 |
-| Standard | 14,90 € | 500 (250 gradiv) | 1 |
-| Družina | 19,90 € | 500 (250 gradiv) | do 3 |
+| Paket | Cena | Krediti / mesec | Enostranskih gradiv | Otroci |
+|---|---|---|---|---|
+| Basic | 11,90 € | 100 | 33 | 1 |
+| Standard | 17,90 € | 500 | 166 | 1 |
+| Družina | 22,90 € | 500 | 166 | do 3 |
 
-Ena generacija (izpisek + kartončki + kviz) = 2 kredita. Krediti se odštejejo šele, ko je gradivo uspešno ustvarjeno.
+Generiranje gradiva (izpisek + kartončki + kviz) je vezano na dolžino snovi: 3 kredite do 4000 znakov (ena stran),
+nato 3 kredite za vsak nadaljnji začet del po 3000 znakov (pravilo v `backend/services/credits.js` in
+`frontend/src/constants.js`, spremeni obe hkrati). Pregled rešenega lista in učni list ostaneta pri 2 kreditih.
+Krediti se odštejejo šele, ko je gradivo uspešno ustvarjeno. Registracija starša podeli 10 brezplačnih preizkusnih
+kreditov.
 
 ## API
 
