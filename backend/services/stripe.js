@@ -7,7 +7,7 @@ const Stripe = require('stripe');
 const PLANS = {
   basic: { credits: 100, priceEnv: 'STRIPE_PRICE_BASIC' },
   standard: { credits: 200, priceEnv: 'STRIPE_PRICE_STANDARD' },
-  family: { credits: 450, priceEnv: 'STRIPE_PRICE_FAMILY' },
+  family: { credits: 360, priceEnv: 'STRIPE_PRICE_FAMILY' },
 };
 
 let client;

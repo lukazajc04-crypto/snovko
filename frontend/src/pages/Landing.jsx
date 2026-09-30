@@ -57,7 +57,7 @@ const PLANS = [
     name: 'Družina',
     price: '24,90',
     tilt: 1.2,
-    features: ['Do 3 otroci', '150 gradiv na mesec (ena stran = 1 gradivo)', 'Razlaga, kartončki in kviz', 'Pregled napredka za vsakega otroka', 'Večerni e-mail o tem, kaj se je učil'],
+    features: ['Do 3 otroci', '120 gradiv na mesec (ena stran = 1 gradivo)', 'Razlaga, kartončki in kviz', 'Pregled napredka za vsakega otroka', 'Večerni e-mail o tem, kaj se je učil'],
   },
 ];
 
