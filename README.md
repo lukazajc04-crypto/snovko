@@ -102,8 +102,8 @@ cd backend && node scripts/add-credits.js stars@primer.si 100 basic
 | Paket | Cena | Krediti / mesec | Enostranskih gradiv | Otroci |
 |---|---|---|---|---|
 | Basic | 11,90 € | 100 | 33 | 1 |
-| Standard | 17,90 € | 500 | 166 | 1 |
-| Družina | 22,90 € | 500 | 166 | do 3 |
+| Standard | 17,90 € | 300 | 100 | 1 |
+| Družina | 22,90 € | 450 | 150 | do 3 |
 
 Generiranje gradiva (izpisek + kartončki + kviz) je vezano na dolžino snovi: 3 kredite do 4000 znakov (ena stran),
 nato 3 kredite za vsak nadaljnji začet del po 3000 znakov (pravilo v `backend/services/credits.js` in
