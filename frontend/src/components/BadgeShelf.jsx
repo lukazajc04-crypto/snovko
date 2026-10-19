@@ -25,7 +25,7 @@ const GLYPHS = {
   ),
 };
 
-function BadgeIcon({ glyph }) {
+export function BadgeIcon({ glyph }) {
   return (
     <svg className="badge-icon" viewBox="0 0 24 24" aria-hidden="true">
       {GLYPHS[glyph]}
