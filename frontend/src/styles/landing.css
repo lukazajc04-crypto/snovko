@@ -175,7 +175,7 @@ html { scroll-behavior: smooth; }
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-/* Napovednik videa */
+/* Napovednik animirane razlage */
 .video-teaser {
   display: flex;
   align-items: center;
@@ -197,7 +197,7 @@ html { scroll-behavior: smooth; }
   line-height: 1.6;
   color: var(--ink-dim);
 }
-.video-soon {
+.teaser-badge {
   flex-shrink: 0;
   padding: 0.1rem 0.55rem;
   font-family: var(--font-ui);

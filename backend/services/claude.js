@@ -325,6 +325,15 @@ async function generateSingle({ text, image, subject, grade, meter }) {
 }
 
 // Vrne gradivo in dejansko porabo AI (žetoni in strošek), da se zabeleži poleg generiranja
+// Strošek klicev iz števca žetonov; zapiše se tudi v dnevnik, kjer je viden na Renderju
+function usageFrom(meter, label) {
+  const costUsd = (meter.input * PRICE_INPUT_PER_MTOK + meter.output * PRICE_OUTPUT_PER_MTOK) / 1e6;
+  console.log(
+    `[claude] ${label}: ${meter.calls} klicev, ${meter.input} vhodnih + ${meter.output} izhodnih žetonov ≈ $${costUsd.toFixed(4)}`
+  );
+  return { calls: meter.calls, inputTokens: meter.input, outputTokens: meter.output, costUsd };
+}
+
 async function generateMaterial({ text, image, subject, grade }) {
   const meter = { input: 0, output: 0, calls: 0 };
   const material =
@@ -332,12 +341,7 @@ async function generateMaterial({ text, image, subject, grade }) {
       ? await generateLong({ text, subject, grade, meter })
       : await generateSingle({ text, image, subject, grade, meter });
 
-  const costUsd = (meter.input * PRICE_INPUT_PER_MTOK + meter.output * PRICE_OUTPUT_PER_MTOK) / 1e6;
-  const usage = { calls: meter.calls, inputTokens: meter.input, outputTokens: meter.output, costUsd };
-  console.log(
-    `[claude] ${meter.calls} klicev, ${meter.input} vhodnih + ${meter.output} izhodnih žetonov ≈ $${costUsd.toFixed(4)}`
-  );
-  return { material, usage };
+  return { material, usage: usageFrom(meter, 'gradivo') };
 }
 
 // Meje, ki jih model ne more preseči, ne glede na to, kaj vrne
@@ -456,4 +460,4 @@ function assembleSummary(paragraphs) {
   return { izpisek: texts.join('\n\n'), poudarki: highlights };
 }
 
-module.exports = { generateMaterial, GenerationError, assembleSummary };
+module.exports = { generateMaterial, GenerationError, assembleSummary, callClaude, withRetry, usageFrom };

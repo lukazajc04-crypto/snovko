@@ -167,18 +167,17 @@ export default function Landing() {
         <NoteCard tilt={0.7} as="div" className="video-teaser">
           <div className="video-teaser-text">
             <p className="video-teaser-head">
-              <span className="video-soon">kmalu</span>
-              Video razlaga s slovenskim glasom
+              <span className="teaser-badge">novo</span>
+              Animirana razlaga na šolski tabli
             </p>
             <p>
-              Za otroke, ki si lažje zapomnijo, kar slišijo in vidijo — vsako snov bo mogoče dobiti tudi kot kratek
-              video z razlago in diagrami.
+              Za otroke, ki si lažje zapomnijo, kar vidijo in slišijo: vsako snov si lahko ogledajo kot kratko animacijo
+              z računi, preglednicami, grafi in podnapisi. Kjer naprava podpira slovenski glas, jim razlago tudi prebere.
             </p>
           </div>
           <svg className="video-teaser-icon" viewBox="0 0 48 48" aria-hidden="true">
-            <rect x="5" y="11" width="28" height="26" rx="3.5" />
-            <path d="M33 22l10-6v16l-10-6z" />
-            <path d="M15 19l8 5-8 5z" />
+            <rect x="4" y="7" width="40" height="27" rx="2" />
+            <path d="M10 27l7-8 5 5 8-10 6 6M15 34l-4 8M33 34l4 8M24 34v4" />
           </svg>
         </NoteCard>
       </section>

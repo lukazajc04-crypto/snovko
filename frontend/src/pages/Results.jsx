@@ -1,10 +1,12 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import NoteCard from '../components/NoteCard';
 import FlashcardDeck from '../components/FlashcardDeck';
 import QuizCard from '../components/QuizCard';
 import VoiceReaderCard from '../components/VoiceReaderCard';
+import AnimatedExplainer from '../components/AnimatedExplainer';
 import useVoiceReader from '../hooks/useVoiceReader';
 import { formatDate } from '../constants';
 import '../styles/results.css';
@@ -168,45 +170,87 @@ function ProgressNote({ progress, currentId }) {
   );
 }
 
-function VideoNote() {
-  const [interested, setInterested] = useState(false);
+// Animacijo pripravi strežnik ob prvem ogledu (~pol minute), nato je shranjena in se odpre takoj
+function AnimationNote({ generationId, title, ready, onQuiz }) {
+  const [animation, setAnimation] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const openerRef = useRef(null);
 
-  useEffect(() => {
-    api
-      .get('/api/interest')
-      .then(res => setInterested(res.data.features.includes('video')))
-      .catch(() => {});
-  }, []);
+  async function start() {
+    setError('');
+    if (animation) {
+      setOpen(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post(`/api/generations/${generationId}/animation`);
+      setAnimation(res.data.animation);
+      setOpen(true);
+    } catch (err) {
+      setError(errorMessage(err, 'Animacije ni bilo mogoče pripraviti. Poskusi znova.'));
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  function register() {
-    setInterested(true);
-    api.post('/api/interest', { feature: 'video' }).catch(() => {});
+  function close() {
+    setOpen(false);
+    openerRef.current?.focus();
   }
 
   return (
-    <div className="video-note">
+    <div className="anim-note">
       <div className="note-head">
-        <h2>Video razlaga</h2>
-        <span className="video-soon">kmalu</span>
+        <h2>Animirana razlaga</h2>
+        <span className="anim-new">novo</span>
       </div>
-      <p>
-        Ta snov, razložena v <strong>videu s slovenskim glasom</strong> in diagrami — za otroke, ki si lažje
-        zapomnijo, kar slišijo in vidijo.
-      </p>
-      <button
-        type="button"
-        className="btn"
-        onClick={register}
-        disabled={interested}
-        aria-live="polite"
-      >
-        {interested ? 'Hvala — javimo vam ✓' : 'Zanima me'}
+      <button type="button" className="anim-thumb" onClick={start} disabled={loading} ref={openerRef}>
+        <span className="anim-thumb-title">{title}</span>
+        <span className={`anim-thumb-play ${loading ? 'is-loading' : ''}`} aria-hidden="true">
+          {loading ? (
+            <span className="waking-dots">
+              <span />
+              <span />
+              <span />
+            </span>
+          ) : (
+            <svg viewBox="0 0 24 24">
+              <path d="M8 5.5v13l10.5-6.5z" />
+            </svg>
+          )}
+        </span>
+        <span className="visually-hidden">{loading ? 'Pripravljam animacijo' : 'Poglej animirano razlago'}</span>
       </button>
-      <p className="hand-note">
-        {interested
-          ? 'Ko bo video pripravljen, vas obvestimo po e-pošti.'
-          : 'Predvidena cena okoli 4,90 € na video.'}
+      <p className="hand-note" aria-live="polite">
+        {loading
+          ? 'Snovko riše tablo … prvič traja do pol minute.'
+          : ready || animation
+            ? 'Snov na tabli, s podnapisi in glasom.'
+            : 'Snov na tabli, s podnapisi in glasom. Prvič jo pripravimo v pol minute.'}
       </p>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      {open &&
+        animation &&
+        createPortal(
+          <AnimatedExplainer
+            animation={animation}
+            title={title}
+            onClose={close}
+            onQuiz={() => {
+              setOpen(false);
+              // Pomik počaka, da se razlaga zapre in stran spet lahko drsi
+              requestAnimationFrame(onQuiz);
+            }}
+          />,
+          document.body
+        )}
     </div>
   );
 }
@@ -355,6 +399,7 @@ export default function Results() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(0);
   const textRef = useRef(null);
+  const quizRef = useRef(null);
 
   useEffect(() => {
     setData(null);
@@ -520,10 +565,18 @@ export default function Results() {
       </article>
 
       <aside className="results-notes" aria-label="Učenje">
+        <NoteCard tilt={0.8} as="div" className="note-animation">
+          <AnimationNote
+            generationId={data.id}
+            title={content.naslov}
+            ready={data.has_animation}
+            onQuiz={() => quizRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          />
+        </NoteCard>
         <NoteCard tilt={-1} as="div">
           <FlashcardDeck cards={content.kartoncki} />
         </NoteCard>
-        <NoteCard tilt={1} as="div">
+        <NoteCard tilt={1} as="div" ref={quizRef}>
           <QuizCard key={data.id} questions={content.kviz} onFinish={saveQuiz} />
         </NoteCard>
         <NoteCard tilt={-0.8} as="div">
@@ -531,9 +584,6 @@ export default function Results() {
         </NoteCard>
         <NoteCard tilt={0.6} as="div" className="note-worksheet">
           <WorksheetNote generationId={data.id} />
-        </NoteCard>
-        <NoteCard tilt={0.9} as="div" className="note-video">
-          <VideoNote />
         </NoteCard>
       </aside>
 

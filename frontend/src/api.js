@@ -9,9 +9,9 @@ const api = axios.create({
 // Render na brezplačnem paketu zaspi; prvi klic potem traja 20-50 s. Brez tega
 // izgleda aplikacija zamrznjena, zato o dolgem čakanju obvestimo uporabnika.
 const SLOW_AFTER_MS = 4000;
-// Generiranje in pregled listov sta dolga po naravi in imata svoj prikaz čakanja; obvestilo
-// o prebujanju strežnika bi tam lagalo
-const LONG_BY_DESIGN = /^\/api\/(generate|checks|exercises)\/?$/;
+// Generiranje, pregled listov in prva priprava animacije so dolgi po naravi in imajo svoj prikaz
+// čakanja; obvestilo o prebujanju strežnika bi tam lagalo
+const LONG_BY_DESIGN = /^\/api\/(generate|checks|exercises|generations\/\d+\/animation)\/?$/;
 let pending = 0;
 let slowTimer = null;
 

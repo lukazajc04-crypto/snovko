@@ -91,6 +91,8 @@ cd backend && node scripts/add-credits.js stars@primer.si 100 basic
    Kodo lahko vpiše tudi kasneje na svoji strani.
 5. **Otrok naloži snov** na `/child` → po 40–120 sekundah (odvisno od dolžine) se odpre `/results/:id` z izpiskom,
    kartončki in kvizom. Ena stran porabi 3 kredite staršu, daljša snov sorazmerno več (glej spodaj).
+   Na isti strani je **animirana razlaga**: ob prvem ogledu jo AI v ~30 sekundah pripravi iz izpiska, nato se
+   shrani in odpre takoj. Je brezplačna za uporabnika (strošek AI ~4 cente na gradivo, samo enkrat).
 6. **Pregled rešenega lista**: otrok na `/child` izbere »Preglej rešen list« in naloži fotografijo. Po ~30–40
    sekundah se odpre `/checks/:id` s kljukicami, križci in pripisanimi rešitvami na fotografiji ter seznamom nalog
    z razlagami. Stane 2 kredita; če na fotografiji ni nalog, se krediti ne odštejejo.
@@ -123,6 +125,7 @@ kreditov.
 | POST | `/api/generate` | starš ali otrok; `multipart/form-data` z `file` ali JSON s `text`, plus `subject` (starš še `child_id`) |
 | GET | `/api/generations/:id` | starš ali otrok |
 | POST | `/api/generations/:id/quiz-results` | starš ali otrok (`score`, `total`) |
+| POST | `/api/generations/:id/animation` | starš ali otrok; vrne shranjen scenarij animirane razlage ali ga pripravi |
 | POST | `/api/checks` | starš ali otrok; `multipart/form-data` s fotografijo `file` (JPG/PNG) in `subject` |
 | GET | `/api/checks/:id` in `/api/checks/:id/image` | starš ali otrok |
 | GET | `/api/dashboard/child` | otrok (starš s `?child_id=`) |
@@ -134,11 +137,16 @@ kreditov.
 
 - Fotografije (JPG/PNG) prebere Claude neposredno, zato deluje tudi rokopis iz zvezka. PDF prebere `pdf-parse`,
   DOCX pa `mammoth`. Brskalnik velike fotografije pred pošiljanjem pomanjša.
-- Modeli: gradiva ustvarja `claude-haiku-4-5`, rešene liste pregleduje `claude-opus-5` (natančnejše branje rokopisa
-  in postavitev oznak, a dražje in počasneje). Model za pregled je v `backend/services/worksheet.js`.
-  Pregled ima vklopljen samodejni rezervni model (`fallbacks: "default"`), če Opus 5 zahtevo zavrne.
+- Modeli: gradiva in scenarij animirane razlage ustvarja `claude-sonnet-5`, rešene liste pregleduje `claude-opus-5`
+  (natančnejše branje rokopisa in postavitev oznak, a dražje in počasneje). Model za pregled je v
+  `backend/services/worksheet.js`. Pregled ima vklopljen samodejni rezervni model (`fallbacks: "default"`), če Opus 5
+  zahtevo zavrne.
+- Animirana razlaga (`backend/services/animation.js`) je zaporedje prizorov na tabli (računi, preglednice, grafi,
+  primerjave, časovnice, vprašanje, povzetek). Strežnik preveri vsa števila: prizor z napačnim računom ali vrednostjo
+  v preglednici ali grafu zavrže. Bere slovenski glas naprave (na Macu »Tina«); kjer ga ni, razlaga teče
+  s podnapisi.
 - Fotografije pregledanih listov se shranijo v `backend/uploads/checks/` in so dostopne samo staršu in otroku.
 - Ob spremembi `schema.sql` obstoječa baza ne dobi novih stolpcev. Med razvojem ustavi backend in izbriši
   `backend/db/snovko.db*`, da se ustvari na novo.
-- Še ni implementirano: prijava z Googlom, večerni e-mail staršu, video razlage (gumb pokaže »kmalu«),
-  dokup kreditov in Stripe portal za preklic naročnine.
+- Še ni implementirano: prijava z Googlom, večerni e-mail staršu, dokup kreditov in Stripe portal za preklic
+  naročnine.
