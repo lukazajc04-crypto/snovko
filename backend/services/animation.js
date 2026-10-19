@@ -8,8 +8,8 @@ const MAX_STEPS = 10;
 const MAX_COLUMNS = 8;
 const MIN_SCENES = 3;
 
-// Premori po vsakem koraku (ms). Določa jih strežnik, da glas iz brskalnika in posnetek z Azura
-// tečeta enako in da se slika ujema z zvokom.
+// Premori po vsakem koraku (ms). Določa jih strežnik, da razlaga teče enako z glasom naprave
+// in s posnetki ponudnika glasu.
 const PAUSE_AFTER_SPEECH_MS = 450;
 const SILENT_STEP_MS = 900;
 const TITLE_PAUSE_MS = 700;

@@ -11,10 +11,10 @@ const tts = require('../services/tts');
 
 const router = express.Router();
 
-// Posnetki glasu za animirane razlage: en MP3 na prizor, ustvari se ob prvem predvajanju
+// Posnetki glasu za animirane razlage: en MP3 na korak, ustvari se ob prvem predvajanju
 const AUDIO_DIR = path.join(__dirname, '../uploads/audio');
 
-// Azure vrača MP3, lokalni nadomestni strežnik za preizkus pa WAV; vrsto preberemo iz glave datoteke
+// Ponudnika glasu vračata MP3, lokalni nadomestni strežnik za preizkus pa WAV; vrsto preberemo iz glave datoteke
 function audioType(file) {
   const head = Buffer.alloc(4);
   const fd = fs.openSync(file, 'r');
@@ -98,23 +98,26 @@ router.post('/:id/animation', requireAuth, async (req, res) => {
   }
 });
 
-// Glas za en prizor. Če Azure ni nastavljen ali ne odgovori, odjemalec razlago prebere z glasom naprave.
-router.get('/:id/animation/audio/:scene', requireAuth, async (req, res) => {
+// Glas za en korak (eno poved) prizora. Če glas ni nastavljen ali ponudnik ne odgovori, odjemalec
+// razlago prebere z glasom naprave.
+router.get('/:id/animation/audio/:scene/:step', requireAuth, async (req, res) => {
   const found = loadAccessible(req, res);
   if (!found) return;
   const { generation } = found;
 
-  const index = Number(req.params.scene);
+  const sceneIndex = Number(req.params.scene);
+  const stepIndex = Number(req.params.step);
   const cached = getAnimation.get(generation.id);
-  const scene = cached && Number.isInteger(index) && JSON.parse(cached.content_json).prizori[index];
-  if (!scene) return res.status(404).json({ error: 'Prizor ne obstaja.' });
+  const scene = cached && Number.isInteger(sceneIndex) && JSON.parse(cached.content_json).prizori[sceneIndex];
+  const text = scene && Number.isInteger(stepIndex) && scene.koraki[stepIndex]?.govor;
+  if (!text) return res.status(404).json({ error: 'Korak ne obstaja.' });
   if (!tts.isConfigured()) return res.status(503).json({ error: 'Glas ni nastavljen.' });
 
-  const file = path.join(AUDIO_DIR, String(generation.id), `${index}.mp3`);
+  const file = path.join(AUDIO_DIR, String(generation.id), `${sceneIndex}-${stepIndex}.mp3`);
   if (!fs.existsSync(file)) {
     if (!pendingAudio.has(file)) {
       const job = tts
-        .synthesizeScene(scene)
+        .synthesize(text)
         .then(({ audio, chars }) => {
           fs.mkdirSync(path.dirname(file), { recursive: true });
           fs.writeFileSync(file, audio);

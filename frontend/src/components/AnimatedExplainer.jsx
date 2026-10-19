@@ -3,7 +3,7 @@ import api from '../api';
 import useNarrator from '../hooks/useNarrator';
 import useSfx from '../hooks/useSfx';
 import Mascot from './Mascot';
-import { SceneView, THINK_MS, hasChoice, sceneBeats, timelineFor } from './ExplainerScenes';
+import { SceneView, THINK_MS, hasChoice, sceneBeats } from './ExplainerScenes';
 import '../styles/explainer.css';
 
 const SPEEDS = [0.85, 1, 1.15];
@@ -34,14 +34,29 @@ function sleep(ms, signal) {
   });
 }
 
-function waitForMetadata(audio) {
-  return new Promise((resolve, reject) => {
-    if (audio.readyState >= 1) {
+// Predvaja posnetek ene povedi do konca; prekinitev ga ustavi. Po pavzi isti posnetek nadaljuje, kjer je ostal.
+async function playClip(audio, url, rate, signal) {
+  if (signal.aborted) return;
+  if (audio.dataset.clip !== url || audio.ended) {
+    audio.src = url;
+    audio.dataset.clip = url;
+  }
+  audio.playbackRate = rate;
+  await audio.play();
+  await new Promise(resolve => {
+    function done() {
+      audio.removeEventListener('ended', done);
+      audio.removeEventListener('error', done);
+      signal.removeEventListener('abort', stop);
       resolve();
-      return;
     }
-    audio.addEventListener('loadedmetadata', resolve, { once: true });
-    audio.addEventListener('error', reject, { once: true });
+    function stop() {
+      audio.pause();
+      done();
+    }
+    audio.addEventListener('ended', done);
+    audio.addEventListener('error', done);
+    signal.addEventListener('abort', stop);
   });
 }
 
@@ -60,7 +75,7 @@ const ICONS = {
   soundOff: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9.5l5 5M20.5 9.5l-5 5',
 };
 
-// Načini glasu: posnetek z Azura (naraven glas), glas naprave ali tiho s podnapisi
+// Načini glasu: posnetki s strežnika (ElevenLabs ali Azure), glas naprave ali tiho s podnapisi
 function narrationMode({ soundOn, serverVoice, audioFailed, deviceVoice }) {
   if (!soundOn) return 'silent';
   if (serverVoice && !audioFailed) return 'audio';
@@ -95,24 +110,41 @@ export default function AnimatedExplainer({ generationId, animation, serverVoice
   const beat = beats[Math.min(step, beats.length - 1)];
   const mode = narrationMode({ soundOn, serverVoice, audioFailed, deviceVoice: available });
 
-  // Posnetek prizora prinese prijavljena zahteva (brskalnikov <audio> ne zna poslati žetona)
-  const sceneAudio = useCallback(
-    index => {
-      if (!audioUrls.current.has(index)) {
+  // Posnetek povedi prinese prijavljena zahteva (brskalnikov <audio> ne zna poslati žetona)
+  const clipUrl = useCallback(
+    (sceneAt, stepAt) => {
+      const key = `${sceneAt}-${stepAt}`;
+      if (!audioUrls.current.has(key)) {
         const request = api
-          .get(`/api/generations/${generationId}/animation/audio/${index}`, { responseType: 'blob' })
+          .get(`/api/generations/${generationId}/animation/audio/${sceneAt}/${stepAt}`, { responseType: 'blob' })
           .then(res => URL.createObjectURL(res.data));
-        request.catch(() => audioUrls.current.delete(index));
-        audioUrls.current.set(index, request);
+        request.catch(() => audioUrls.current.delete(key));
+        audioUrls.current.set(key, request);
       }
-      return audioUrls.current.get(index);
+      return audioUrls.current.get(key);
     },
     [generationId]
   );
 
+  // Naslednji dve povedi se pripravita vnaprej, da med koraki ni čakanja na strežnik
+  const prefetch = useCallback(
+    (sceneAt, stepAt) => {
+      let found = 0;
+      for (let s = sceneAt; s < scenes.length && found < 2; s++) {
+        const koraki = scenes[s].koraki;
+        for (let b = s === sceneAt ? stepAt : 0; b < koraki.length && found < 2; b++) {
+          if (!koraki[b].govor) continue;
+          clipUrl(s, b).catch(() => {});
+          found += 1;
+        }
+      }
+    },
+    [scenes, clipUrl]
+  );
+
   useEffect(() => {
-    if (serverVoice) sceneAudio(0).catch(() => {});
-  }, [serverVoice, sceneAudio]);
+    if (serverVoice) prefetch(0, 0);
+  }, [serverVoice, prefetch]);
 
   useEffect(() => {
     const urls = audioUrls.current;
@@ -124,87 +156,30 @@ export default function AnimatedExplainer({ generationId, animation, serverVoice
     };
   }, [audio]);
 
-  // Naravni glas: en posnetek na prizor, korak določa čas predvajanja
+  // Korak za korakom: glas prebere poved (posnetek ali glas naprave) ali počakamo čas branja,
+  // nato premor iz scenarija
   useEffect(() => {
-    if (mode !== 'audio' || status !== 'playing') return undefined;
-    const current = scenes[sceneIndex];
-    let cancelled = false;
-    let frame = 0;
-    const fail = () => {
-      if (!cancelled) setAudioFailed(true);
-    };
-
-    (async () => {
-      try {
-        const url = await sceneAudio(sceneIndex);
-        if (cancelled) return;
-        if (audio.dataset.scene !== String(sceneIndex)) {
-          audio.src = url;
-          audio.dataset.scene = String(sceneIndex);
-          await waitForMetadata(audio);
-        }
-        if (cancelled) return;
-        const timeline = timelineFor(current, audio.duration);
-        const from = timeline[Math.min(stepRef.current, timeline.length - 1)];
-        if (audio.currentTime < from.start - 0.05 || audio.currentTime > from.end) audio.currentTime = from.start;
-        audio.playbackRate = speed;
-        await audio.play();
-        if (cancelled) return;
-        if (sceneIndex + 1 < scenes.length) sceneAudio(sceneIndex + 1).catch(() => {});
-
-        let speakingNow = false;
-        const tick = () => {
-          if (cancelled) return;
-          const t = audio.currentTime;
-          let index = 0;
-          timeline.forEach((b, i) => {
-            if (t >= b.start) index = i;
-          });
-          if (index !== stepRef.current) setStep(index);
-          const speaking = t < timeline[index].speechEnd;
-          if (speaking !== speakingNow) {
-            speakingNow = speaking;
-            setTalking(speaking);
-          }
-          // Po vprašanju posnetek počaka na otrokov odgovor
-          if (current.tip === 'vprasanje' && index === 0 && t >= timeline[0].speechEnd && !answerRef.current) {
-            audio.pause();
-            setStatus('waiting');
-            return;
-          }
-          if (audio.ended) {
-            if (sceneIndex < scenes.length - 1) {
-              setSceneIndex(sceneIndex + 1);
-              setStep(0);
-            } else setStatus('done');
-            return;
-          }
-          frame = requestAnimationFrame(tick);
-        };
-        frame = requestAnimationFrame(tick);
-      } catch {
-        fail();
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frame);
-      audio.pause();
-      setTalking(false);
-    };
-  }, [mode, status, sceneIndex, speed, scenes, audio, sceneAudio]);
-
-  // Glas naprave ali tiho: korak za korakom, premor po vsakem določa scenarij
-  useEffect(() => {
-    if (mode === 'audio' || status !== 'playing') return undefined;
+    if (status !== 'playing') return undefined;
     const controller = new AbortController();
     const { signal } = controller;
     const current = scenes[sceneIndex];
     const currentBeat = sceneBeats(current)[step];
 
     (async () => {
-      if (currentBeat.say && mode === 'tts') {
+      if (currentBeat.say && mode === 'audio') {
+        prefetch(sceneIndex, step + 1);
+        try {
+          const url = await clipUrl(sceneIndex, step);
+          setTalking(true);
+          await playClip(audio, url, speed, signal);
+        } catch {
+          // Strežnik glasu ni dosegljiv: do konca razlage bere glas naprave
+          if (!signal.aborted) setAudioFailed(true);
+          return;
+        } finally {
+          setTalking(false);
+        }
+      } else if (currentBeat.say && mode === 'tts') {
         setTalking(true);
         await speak(currentBeat.say, speed, signal);
         setTalking(false);
@@ -229,7 +204,7 @@ export default function AnimatedExplainer({ generationId, animation, serverVoice
       controller.abort();
       setTalking(false);
     };
-  }, [mode, status, sceneIndex, step, speed, scenes, speak]);
+  }, [mode, status, sceneIndex, step, speed, scenes, speak, audio, clipUrl, prefetch]);
 
   // Vprašanje: brez klika po določenem času razkrije odgovor
   useEffect(() => {
@@ -243,13 +218,13 @@ export default function AnimatedExplainer({ generationId, animation, serverVoice
     if (status !== 'waiting' || !answer) return undefined;
     const timer = setTimeout(
       () => {
-        if (mode !== 'audio') setStep(1);
+        setStep(1);
         setStatus('playing');
       },
       answer.choice ? FEEDBACK_MS : 400
     );
     return () => clearTimeout(timer);
-  }, [status, answer, mode]);
+  }, [status, answer]);
 
   useEffect(() => {
     setAnswer(null);
@@ -294,7 +269,7 @@ export default function AnimatedExplainer({ generationId, animation, serverVoice
     sfx.unlock();
     if (serverVoice) {
       audio.src = SILENT_WAV;
-      audio.dataset.scene = '';
+      audio.dataset.clip = '';
       audio.play().catch(() => {});
     }
   }

@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS api_usage (
 
 -- Scenarij animirane razlage. Nastane ob prvem ogledu gradiva in se potem samo bere,
 -- zato vsako gradivo stane AI največ enkrat. Poraba je tu, ker api_usage šteje gradiva po dolžini.
--- voice_chars šteje znake, ki jih je prebral Azure (zaračuna jih po znakih).
+-- voice_chars šteje znake, ki jih je prebral ponudnik glasu (ElevenLabs ali Azure zaračunata po znakih).
 CREATE TABLE IF NOT EXISTS animations (
   generation_id  INTEGER PRIMARY KEY REFERENCES generations(id) ON DELETE CASCADE,
   content_json   TEXT    NOT NULL,

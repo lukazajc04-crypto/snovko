@@ -606,7 +606,7 @@ function beatSound(scene, k, i) {
 }
 
 // Takti prizora: kaj glas pove, ali je to treba podnasloviti, kateri zvok spremlja nov element
-// in koliko je premora za tem. Premore določi strežnik (enaki so v posnetku glasu).
+// in koliko je premora za tem. Premore določi strežnik v scenariju.
 export function sceneBeats(scene) {
   return scene.koraki.map((k, i) => ({
     say: k.govor,
@@ -614,21 +614,4 @@ export function sceneBeats(scene) {
     sound: beatSound(scene, k, i),
     pause: scene.premori?.[i] ?? FALLBACK_PAUSE_MS,
   }));
-}
-
-// Kje v posnetku prizora se začne vsak korak. Azure posnetek vsebuje povedi in premore iz
-// scenarija; čas govora razdelimo po dolžini povedi, premore poznamo natančno.
-export function timelineFor(scene, duration) {
-  const beats = sceneBeats(scene);
-  const chars = beats.map(b => b.say.length);
-  const totalChars = chars.reduce((sum, n) => sum + n, 0) || 1;
-  const pauses = beats.reduce((sum, b) => sum + b.pause, 0) / 1000;
-  const speech = Math.max(0, duration - pauses);
-  let t = 0;
-  return beats.map((b, i) => {
-    const start = t;
-    const speechEnd = start + (speech * chars[i]) / totalChars;
-    t = speechEnd + b.pause / 1000;
-    return { start, speechEnd, end: t };
-  });
 }
