@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+const BETTER_VOICE = /natural|neural|enhanced|premium|online/i;
+
 // Pripovedovalec animirane razlage: prebere eno poved in sporoči, kdaj je končal.
 // Brez slovenskega glasu raje molči (razlaga teče s podnapisi), kot da bi bral s tujim naglasom.
 export default function useNarrator() {
@@ -12,8 +14,9 @@ export default function useNarrator() {
     if (!supported) return;
     const synth = window.speechSynthesis;
     function pick() {
-      const voices = synth.getVoices();
-      setVoice(voices.find(v => v.lang === 'sl-SI') || voices.find(v => v.lang?.toLowerCase().startsWith('sl')) || null);
+      // Izboljšani in nevronski glasovi (Edge »Natural«, Apple »Enhanced«/»Premium«) zvenijo veliko manj robotsko
+      const slovenian = synth.getVoices().filter(v => v.lang?.toLowerCase().startsWith('sl'));
+      setVoice(slovenian.find(v => BETTER_VOICE.test(v.name)) || slovenian.find(v => v.lang === 'sl-SI') || slovenian[0] || null);
     }
     pick();
     synth.addEventListener('voiceschanged', pick);

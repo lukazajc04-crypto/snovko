@@ -187,7 +187,7 @@ function AnimationNote({ generationId, title, ready, onQuiz }) {
     setLoading(true);
     try {
       const res = await api.post(`/api/generations/${generationId}/animation`);
-      setAnimation(res.data.animation);
+      setAnimation({ ...res.data.animation, serverVoice: res.data.voice });
       setOpen(true);
     } catch (err) {
       setError(errorMessage(err, 'Animacije ni bilo mogoče pripraviti. Poskusi znova.'));
@@ -240,7 +240,9 @@ function AnimationNote({ generationId, title, ready, onQuiz }) {
         animation &&
         createPortal(
           <AnimatedExplainer
+            generationId={generationId}
             animation={animation}
+            serverVoice={animation.serverVoice}
             title={title}
             onClose={close}
             onQuiz={() => {

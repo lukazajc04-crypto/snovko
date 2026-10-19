@@ -34,6 +34,8 @@ cp .env.example .env
 | `STRIPE_SECRET_KEY` | za plačila | testni ključ `sk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | za plačila | `whsec_...`, izpiše ga `stripe listen` (glej spodaj) |
 | `STRIPE_PRICE_BASIC`, `STRIPE_PRICE_STANDARD`, `STRIPE_PRICE_FAMILY` | za plačila | ustvari jih skripta (glej spodaj) |
+| `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` | za naravni glas | vir »Speech« na portal.azure.com; brez njiju animirano razlago bere glas naprave |
+| `AZURE_SPEECH_VOICE` | ne | privzeto `sl-SI-PetraNeural`, moški glas je `sl-SI-RokNeural` |
 | `FRONTEND_URL` | ne | privzeto `http://localhost:5173` |
 | `PORT` | ne | privzeto `4000` |
 
@@ -143,8 +145,11 @@ kreditov.
   zahtevo zavrne.
 - Animirana razlaga (`backend/services/animation.js`) je zaporedje prizorov na tabli (računi, preglednice, grafi,
   primerjave, časovnice, vprašanje, povzetek). Strežnik preveri vsa števila: prizor z napačnim računom ali vrednostjo
-  v preglednici ali grafu zavrže. Bere slovenski glas naprave (na Macu »Tina«); kjer ga ni, razlaga teče
-  s podnapisi.
+  v preglednici ali grafu zavrže. Pripoveduje sova Snovko (podnapisi v oblačku), sredi razlage je vprašanje, na
+  katerega otrok odgovori s klikom.
+- Glas: z nastavljenim Azurom vsak prizor ob prvem predvajanju dobi posnetek (`backend/uploads/audio/`), ki se nato
+  le še bere; strošek je ~16 $ na milijon znakov, prvih 500.000 znakov na mesec je brezplačnih (~250 razlag). Brez
+  Azura bere slovenski glas naprave (na Macu »Tina«), kjer ga ni, razlaga teče s podnapisi.
 - Fotografije pregledanih listov se shranijo v `backend/uploads/checks/` in so dostopne samo staršu in otroku.
 - Ob spremembi `schema.sql` obstoječa baza ne dobi novih stolpcev. Med razvojem ustavi backend in izbriši
   `backend/db/snovko.db*`, da se ustvari na novo.

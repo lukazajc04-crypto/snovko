@@ -4,8 +4,10 @@ import { Fragment, useEffect, useState } from 'react';
 // elemente do vključno tega koraka; nov element se ob prikazu sam animira, ker se šele takrat vstavi.
 
 const WORD_MS = 75;
-const QUESTION_HOLD_MS = 3500;
-const TITLE_HOLD_MS = 900;
+// Čas za razmislek pri vprašanju brez izbire odgovora
+export const THINK_MS = 3500;
+// Starejše animacije še nimajo premorov s strežnika
+const FALLBACK_PAUSE_MS = 500;
 
 export const writeTime = text => String(text).split(/\s+/).filter(Boolean).length * WORD_MS;
 const hasPair = k => Boolean(k.a && k.b);
@@ -469,8 +471,28 @@ function StepsScene({ scene, step }) {
   );
 }
 
-function QuestionScene({ scene, step, holding }) {
-  const [question, answer] = scene.koraki;
+export const hasChoice = scene => scene.tip === 'vprasanje' && hasPair(scene.koraki[0]);
+
+// Pravilni odgovor (a) ni vedno levo; vrstni red je stalen za isto vprašanje
+function choiceOrder(question) {
+  const seed = [...question.govor].reduce((sum, c) => sum + c.charCodeAt(0), 0);
+  const options = [
+    { key: 'a', text: question.a },
+    { key: 'b', text: question.b },
+  ];
+  return seed % 2 === 0 ? options : options.reverse();
+}
+
+function feedbackText(answer) {
+  if (answer.choice === 'a') return 'Bravo, pravilno!';
+  if (answer.choice === 'b') return 'Skoraj! Pravilen je zeleni odgovor.';
+  return 'Pravilen odgovor je obarvan zeleno.';
+}
+
+function QuestionScene({ scene, step, waiting, answer, onAnswer }) {
+  const [question, explanation] = scene.koraki;
+  const options = hasChoice(scene) ? choiceOrder(question) : null;
+
   return (
     <div className="scene scene-question">
       <span className="q-mark" aria-hidden="true">
@@ -479,15 +501,44 @@ function QuestionScene({ scene, step, holding }) {
       <p className="chalk-question">
         <ChalkWords text={question.govor} />
       </p>
-      {step === 0 && holding && (
+
+      {options && (
+        <div className="q-options" role="group" aria-label="Izberi odgovor">
+          {options.map((o, i) => {
+            const state = !answer ? '' : o.key === 'a' ? 'is-right' : answer.choice === o.key ? 'is-wrong' : 'is-dim';
+            return (
+              <button
+                key={o.key}
+                type="button"
+                className={`q-option ${state}`}
+                style={{ animationDelay: `${writeTime(question.govor) + 200 + i * 150}ms` }}
+                disabled={Boolean(answer)}
+                onClick={e => {
+                  e.stopPropagation();
+                  onAnswer(o.key);
+                }}
+              >
+                {o.text}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {answer && options && (
+        <p className={`q-feedback ${answer.choice === 'a' ? 'is-right' : ''}`} role="status">
+          {feedbackText(answer)}
+        </p>
+      )}
+      {!options && step === 0 && waiting && !answer && (
         <p className="think">
-          <span className="think-ring" style={{ animationDuration: `${QUESTION_HOLD_MS}ms` }} />
+          <span className="think-ring" style={{ animationDuration: `${THINK_MS}ms` }} />
           Premisli …
         </p>
       )}
+
       {step >= 1 && (
         <p className="chalk-answer">
-          <ChalkWords text={answer.govor} />
+          <ChalkWords text={explanation.govor} />
         </p>
       )}
     </div>
@@ -527,9 +578,9 @@ const SCENES = {
   povzetek: SummaryScene,
 };
 
-export function SceneView({ scene, step, holding }) {
-  const View = SCENES[scene.tip] ?? TextScene;
-  return <View scene={scene} step={step} holding={holding} />;
+export function SceneView(props) {
+  const View = SCENES[props.scene.tip] ?? TextScene;
+  return <View {...props} />;
 }
 
 // Podnapis pokažemo samo, kadar na tabli ni zapisana prav ta poved
@@ -541,13 +592,43 @@ function needsCaption(scene, k) {
   return true;
 }
 
-// Takti prizora: kaj glas pove, ali je to treba podnasloviti in koliko počakati po tem
+// Zvok ob novem elementu na tabli; zamik počaka, da se element izriše
+function beatSound(scene, k, i) {
+  if (scene.tip === 'racun' && hasPair(k)) return ['pop', writeTime(k.a) + 350];
+  if (scene.tip === 'preglednica' && hasPair(k)) return ['pop', 300];
+  if (scene.tip === 'graf') {
+    if (hasPair(k)) return ['pop', 0];
+    const lastPoint = scene.koraki.findLastIndex(hasPair);
+    if (lastPoint !== -1 && i === lastPoint + 1) return ['draw', 0];
+  }
+  if (scene.tip === 'povzetek' || scene.tip === 'koraki' || scene.tip === 'primerjava') return ['tick', 300];
+  return null;
+}
+
+// Takti prizora: kaj glas pove, ali je to treba podnasloviti, kateri zvok spremlja nov element
+// in koliko je premora za tem. Premore določi strežnik (enaki so v posnetku glasu).
 export function sceneBeats(scene) {
-  // Prizor brez korakov (npr. dodan naslov) glas samo prebere, besedilo je že na tabli
-  if (scene.koraki.length === 0) return [{ say: scene.naslov, caption: false, hold: TITLE_HOLD_MS }];
   return scene.koraki.map((k, i) => ({
     say: k.govor,
     caption: needsCaption(scene, k),
-    hold: i === 0 && scene.tip === 'vprasanje' ? QUESTION_HOLD_MS : i === 0 && scene.tip === 'naslov' ? TITLE_HOLD_MS : 0,
+    sound: beatSound(scene, k, i),
+    pause: scene.premori?.[i] ?? FALLBACK_PAUSE_MS,
   }));
+}
+
+// Kje v posnetku prizora se začne vsak korak. Azure posnetek vsebuje povedi in premore iz
+// scenarija; čas govora razdelimo po dolžini povedi, premore poznamo natančno.
+export function timelineFor(scene, duration) {
+  const beats = sceneBeats(scene);
+  const chars = beats.map(b => b.say.length);
+  const totalChars = chars.reduce((sum, n) => sum + n, 0) || 1;
+  const pauses = beats.reduce((sum, b) => sum + b.pause, 0) / 1000;
+  const speech = Math.max(0, duration - pauses);
+  let t = 0;
+  return beats.map((b, i) => {
+    const start = t;
+    const speechEnd = start + (speech * chars[i]) / totalChars;
+    t = speechEnd + b.pause / 1000;
+    return { start, speechEnd, end: t };
+  });
 }

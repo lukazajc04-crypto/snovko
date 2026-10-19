@@ -9,7 +9,7 @@
   --chalk-orange: #f5a868;
   --chalk-green: #a9dfb3;
   --board: #2e4a3c;
-  --stage-w: min(1100px, calc((100dvh - 12rem) * 1.6));
+  --stage-w: min(1100px, calc((100dvh - 14.5rem) * 1.6));
 
   position: fixed;
   inset: 0;
@@ -28,7 +28,7 @@
 }
 
 .explainer-bar,
-.explainer-caption,
+.explainer-narrator,
 .explainer-controls { width: min(100%, var(--stage-w)); }
 
 .explainer-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: #f4ecd6; }
@@ -452,16 +452,127 @@
 .board.is-paused .board-scene { filter: brightness(0.86); transition: filter 0.3s; }
 .board-signature { position: absolute; right: 3cqmin; bottom: 1.5cqmin; font-size: 4cqmin; color: var(--chalk-faint); transform: rotate(-4deg); pointer-events: none; }
 
-/* Podnapisi in upravljanje */
-.explainer-caption {
-  min-height: 3em;
-  margin-top: 0.5rem;
+/* Pripovedovalec: sova Snovko in njen oblaček s podnapisi */
+.explainer-narrator { display: flex; align-items: center; gap: 0.9rem; min-height: 5.6rem; margin-top: 0.55rem; }
+.explainer-bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.95rem;
   font-family: var(--font-ui);
-  font-size: clamp(0.9rem, 1.7vw, 1.1rem);
-  line-height: 1.45;
-  text-align: center;
+  font-size: clamp(0.88rem, 1.6vw, 1.05rem);
+  line-height: 1.42;
   color: #f4ecd6;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  transition: border-color 0.2s, background-color 0.2s;
 }
+.explainer-bubble.has-text { background: rgba(255, 255, 255, 0.07); border-color: rgba(244, 236, 214, 0.28); }
+/* Repek oblačka kaže proti sovi */
+.explainer-bubble.has-text::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -8px;
+  width: 14px;
+  height: 14px;
+  background: #2b241c;
+  border-left: 1.5px solid rgba(244, 236, 214, 0.28);
+  border-bottom: 1.5px solid rgba(244, 236, 214, 0.28);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.mascot { position: relative; flex-shrink: 0; width: clamp(62px, 8vw, 92px); }
+.mascot svg { display: block; width: 100%; overflow: visible; animation: mascot-bob 3.2s ease-in-out infinite; }
+.m-line, .m-body { fill: none; stroke: var(--chalk); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.m-body { fill: rgba(244, 241, 231, 0.07); }
+.m-belly { fill: rgba(246, 216, 114, 0.14); stroke: var(--chalk-yellow); stroke-width: 2; }
+.m-faint { fill: none; stroke: var(--chalk-dim); stroke-width: 2; stroke-linecap: round; }
+.m-eye { fill: var(--chalk); }
+.m-pupil { fill: #1d1a14; }
+.m-glint { fill: #fff; }
+.m-pupils { transition: transform 0.3s ease; }
+.m-eyes { transform-box: fill-box; transform-origin: center; animation: mascot-blink 4.6s infinite; }
+.m-happy-eyes { opacity: 0; stroke-width: 3.5; }
+.m-beak-top, .m-beak-bottom { fill: var(--chalk-orange); stroke: none; }
+.m-beak-bottom { transform-box: fill-box; transform-origin: top center; }
+.m-wing-l, .m-wing-r { transform-box: fill-box; transition: transform 0.3s; }
+.m-wing-l { transform-origin: top right; }
+.m-wing-r { transform-origin: top left; }
+
+.mascot.is-talk .m-beak-bottom { animation: mascot-beak 0.2s ease-in-out infinite alternate; }
+.mascot.is-think .m-pupils { transform: translate(-3px, -4px); }
+.mascot.is-happy svg { animation: mascot-hop 0.55s ease-out 2; }
+.mascot.is-happy .m-eyes { opacity: 0; }
+.mascot.is-happy .m-happy-eyes { opacity: 1; }
+.mascot.is-happy .m-wing-l { transform: rotate(28deg); }
+.mascot.is-happy .m-wing-r { transform: rotate(-28deg); }
+.mascot.is-wave .m-wing-r { animation: mascot-wave 0.45s ease-in-out infinite alternate; }
+.mascot.is-oops svg { transform: rotate(-9deg); animation: none; transition: transform 0.3s; }
+.mascot.is-oops .m-pupils { transform: translate(2px, 3px); }
+
+.m-bubble, .m-spark {
+  position: absolute;
+  top: -0.9rem;
+  right: -0.5rem;
+  font-family: var(--font-hand);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--chalk-yellow);
+  animation: mascot-float 1.6s ease-in-out infinite;
+}
+.m-spark { color: var(--chalk-orange); }
+
+@keyframes mascot-bob {
+  50% { transform: translateY(-3px); }
+}
+@keyframes mascot-blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+@keyframes mascot-beak {
+  to { transform: translateY(3.5px) scaleY(1.25); }
+}
+@keyframes mascot-hop {
+  40% { transform: translateY(-14px) rotate(-4deg); }
+  70% { transform: translateY(0) rotate(3deg); }
+}
+@keyframes mascot-wave {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-38deg); }
+}
+@keyframes mascot-float {
+  50% { transform: translateY(-5px) rotate(8deg); }
+}
+
+/* Vprašanje z izbiro: dva odgovora na tabli */
+.q-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5cqmin 4cqmin; max-width: 92%; }
+.q-option {
+  min-width: 26cqmin;
+  padding: 1.6cqmin 4cqmin;
+  font-family: var(--font-hand);
+  font-size: 5.4cqmin;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--chalk);
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.55cqmin dashed var(--chalk-dim);
+  border-radius: 3cqmin;
+  cursor: pointer;
+  text-shadow: inherit;
+  animation: pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  transition: transform 0.15s, background-color 0.2s, border-color 0.2s, opacity 0.3s;
+}
+.q-option:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-style: solid; transform: translateY(-2px) rotate(-1deg); }
+.q-option:focus-visible { outline: 3px solid var(--marker); outline-offset: 3px; }
+.q-option:disabled { cursor: default; }
+.q-option.is-right { color: #1f2e25; background: var(--chalk-green); border: 0.55cqmin solid var(--chalk-green); text-shadow: none; }
+.q-option.is-wrong { color: var(--chalk-orange); border-color: var(--chalk-orange); border-style: solid; text-decoration: line-through; }
+.q-option.is-dim { opacity: 0.45; }
+.q-feedback { font-size: 5cqmin; color: var(--chalk-orange); animation: pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
+.q-feedback.is-right { color: var(--chalk-green); }
+
 .explainer-controls { display: flex; align-items: center; gap: 0.5rem; }
 .ctl {
   display: grid;
@@ -480,7 +591,7 @@
 .ctl:focus-visible { outline: 2px solid var(--marker); outline-offset: 2px; }
 .ctl:disabled { opacity: 0.3; cursor: default; }
 .ctl svg { width: 1.15rem; height: 1.15rem; fill: currentColor; }
-.ctl-voice svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ctl-sound svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .ctl-play { width: 3.2rem; height: 3.2rem; background: var(--rust); border-color: var(--rust); }
 .ctl-play:hover:not(:disabled) { background: var(--rust-dark); }
 .ctl-speed { width: auto; min-width: 3.2rem; padding: 0 0.7rem; font: 600 0.85rem var(--font-ui); border-radius: 99px; }
@@ -490,7 +601,7 @@
 .ctl-seg:focus-visible { outline: 2px solid var(--marker); outline-offset: 2px; }
 
 @media (orientation: portrait) {
-  .explainer { --stage-w: min(560px, calc((100dvh - 13rem) * 0.75)); }
+  .explainer { --stage-w: min(560px, calc((100dvh - 16rem) * 0.75)); }
   .board-frame { aspect-ratio: 3 / 4; }
 }
 @media (max-width: 480px) {

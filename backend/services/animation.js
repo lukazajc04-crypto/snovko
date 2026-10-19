@@ -8,7 +8,14 @@ const MAX_STEPS = 10;
 const MAX_COLUMNS = 8;
 const MIN_SCENES = 3;
 
-const ANIMATION_PROMPT = `Si učitelj, ki iz izpiska šolske snovi pripravi scenarij za kratko animirano razlago na šolski tabli. Gleda jo slovenski osnovnošolec, besedilo pa mu prebere sintetični glas. Piši za uho: kratke, jasne povedi v naravni slovenščini, otroka nagovarjaj s »ti«.
+// Premori po vsakem koraku (ms). Določa jih strežnik, da glas iz brskalnika in posnetek z Azura
+// tečeta enako in da se slika ujema z zvokom.
+const PAUSE_AFTER_SPEECH_MS = 450;
+const SILENT_STEP_MS = 900;
+const TITLE_PAUSE_MS = 700;
+const SCENE_END_MS = 400;
+
+const ANIMATION_PROMPT = `Si Snovko, prijazen učitelj, ki iz izpiska šolske snovi pripravi scenarij za kratko animirano razlago na šolski tabli. Snov razložiš po domače, kot starejši brat ali sestra za kuhinjsko mizo: sproščeno, toplo in z malo navdušenja. Otrok animacijo gleda, besedilo pa mu prebere glas, zato piši tako, kot se govori: kratke povedi, vsakdanje besede, otroka nagovarjaj s »ti«. Sem ter tja ga kaj vprašaj (»Kaj misliš?«) ali spodbudi (»Super!«, »Bravo, zdaj pa …«) in uporabi vezne besede iz pogovora (»Glej,«, »Veš kaj?«, »Zdaj pa poglejva …«), a vzklikov ne ponavljaj v vsaki povedi. Ostani v pravilni slovenščini brez narečja in slenga, ker ju glas ne zna prebrati. Ton naj bo tak: »Glej, v petih zabojih je skupaj 85 kilogramov mandarin. Koliko jih je potem v enem? Preprosto, razdeliva jih na pet enakih delov!«
 
 PRIZORI: 7 do 12 prizorov v vrstnem redu izpiska. Prvi je vedno »naslov«, zadnji »povzetek«, tik pred njim pa »vprasanje«, ki preveri bistvo. Za vmesne prizore izberi vrsto, ki snov pokaže najbolje. Kjer snov vsebuje račune, preglednice ali grafe, jih pokaži s temi prizori, ne z besedilom. Besedilo uporabi le, kjer nobena druga vrsta ne ustreza. Iste vrste ne uporabi več kot trikrat.
 
@@ -21,10 +28,10 @@ KORAKI: vsak prizor je seznam korakov. V vsakem koraku glas prebere »govor«, n
 - graf: prvi korak je uvod (samo govor); nato po en korak za vsako točko: a = x, b = y (nenegativni števili; pri premem sorazmerju najprej točka 0 in 0), govor je lahko prazen niz; zadnji korak razloži črto (samo govor).
 - primerjava: vsak korak je ena vrstica primerjave: a = lastnost prve stvari, b = lastnost druge (do 6 besed), govor = poved o tej razliki ali podobnosti.
 - koraki: zaporedje, krog ali časovnica; vsak korak: a = kratek naslov koraka ali letnica, b = kratek opis (do 8 besed), govor = poved.
-- vprasanje: točno dva koraka: vprašanje in odgovor (samo govor).
+- vprasanje: točno dva koraka. Prvi: govor = vprašanje otroku, a = pravilen odgovor (do 6 besed), b = napačen, a verjeten odgovor (do 6 besed); otrok izbere enega s klikom. Drugi: govor = razlaga, ki se začne z »Pravilno je …«; ne hvali in ne graja, ker ne veš, kaj je otrok izbral.
 - povzetek: 3 do 5 korakov, vsak ena ključna misel: govor = poved, a = kratek zapis na tabli (do 6 besed).
 
-PODATKI izpolni samo pri preglednici, grafu, primerjavi in korakih, drugje jih izpusti:
+PODATKI ima vsak prizor; pomembni so pri preglednici, grafu, primerjavi in korakih, pri drugih vrstah vpiši prazne nize, odnos »drugo«, koeficient 0 in obliko »brez«:
 - oznaka_x, oznaka_y: pri preglednici imeni vrstic z enoto (»število zabojev«, »masa (kg)«), pri grafu imeni osi, pri primerjavi imeni stvari, ki ju primerjaš; sicer prazen niz.
 - odnos: »premo«, če je b = koeficient · a, »obratno«, če je a · b = koeficient, sicer »drugo« s koeficientom 0.
 - enacba: pri grafu ali preglednici na primer »m = 17 · n«, sicer prazen niz.
@@ -65,7 +72,8 @@ const ANIMATION_SCHEMA = obj({
           oblika: { type: 'string', enum: ['zaporedje', 'cikel', 'casovnica', 'brez'] },
         }),
       },
-      ['tip', 'naslov', 'koraki']
+      // Podatki so obvezni za vse prizore: kot neobvezne jih je model pri preglednicah in grafih izpuščal
+      ['tip', 'naslov', 'koraki', 'podatki']
     ),
   },
 });
@@ -222,14 +230,26 @@ const PREPARE = {
     return koraki.length >= 2 && { ...s, koraki, podatki: { ...s.podatki, oblika } };
   },
   vprasanje: s => {
-    const koraki = s.koraki.filter(k => k.govor).slice(0, 2);
-    return koraki.length === 2 && { ...s, koraki };
+    const [question, answer] = s.koraki.filter(k => k.govor);
+    if (!question || !answer) return false;
+    // Izbira med odgovoroma je mogoča le, če sta oba podana in različna; sicer se odgovor samo razkrije
+    const choice = question.a && question.b && question.a.toLowerCase() !== question.b.toLowerCase();
+    return { ...s, koraki: [choice ? question : { ...question, a: '', b: '' }, { ...answer, a: '', b: '' }] };
   },
   povzetek: s => {
     const koraki = s.koraki.filter(k => k.govor).slice(0, 6);
     return koraki.length > 0 && { ...s, koraki };
   },
 };
+
+function pausesFor(scene) {
+  return scene.koraki.map((k, i) => {
+    let ms = k.govor ? PAUSE_AFTER_SPEECH_MS : SILENT_STEP_MS;
+    if (scene.tip === 'naslov' && i === 0) ms += TITLE_PAUSE_MS;
+    if (i === scene.koraki.length - 1) ms += SCENE_END_MS;
+    return ms;
+  });
+}
 
 function prepareScenes(raw, material) {
   const kept = [];
@@ -242,14 +262,18 @@ function prepareScenes(raw, material) {
     const s = { tip: scene?.tip, naslov: clean(scene?.naslov), koraki, ...(scene?.podatki && { podatki: scene.podatki }) };
     const prepared = PREPARE[s.tip]?.(s, material);
     if (prepared) kept.push(prepared);
-    else dropped.push(s.tip ?? '?');
+    else dropped.push(s);
   }
-  if (dropped.length) console.warn(`[animacija] zavrženi prizori: ${dropped.join(', ')}`);
+  // Celoten zavržen prizor v dnevniku: brez tega ni mogoče ugotoviti, zakaj je padel na preverjanju
+  for (const s of dropped) console.warn(`[animacija] zavržen prizor: ${JSON.stringify(s).slice(0, 600)}`);
 
   if (kept[0]?.tip !== 'naslov') {
     kept.unshift({ tip: 'naslov', naslov: material.naslov, podnaslov: clean(material.kicker), koraki: [] });
   }
-  return kept.slice(0, MAX_SCENES);
+  // Naslov brez uvoda glas vsaj prebere, da ima vsak prizor kaj povedati
+  if (kept[0].koraki.length === 0) kept[0] = { ...kept[0], koraki: [{ govor: kept[0].naslov, a: '', b: '' }] };
+
+  return kept.slice(0, MAX_SCENES).map(s => ({ ...s, premori: pausesFor(s) }));
 }
 
 async function generateAnimation({ material, subject, grade }) {

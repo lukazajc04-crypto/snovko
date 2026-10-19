@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const db = require('../db/db');
 const { requireAuth } = require('../middleware/auth');
@@ -5,8 +7,21 @@ const { canAccessChild } = require('../services/access');
 const { subjectProgress } = require('../services/progress');
 const { GenerationError } = require('../services/claude');
 const { generateAnimation } = require('../services/animation');
+const tts = require('../services/tts');
 
 const router = express.Router();
+
+// Posnetki glasu za animirane razlage: en MP3 na prizor, ustvari se ob prvem predvajanju
+const AUDIO_DIR = path.join(__dirname, '../uploads/audio');
+
+// Azure vrača MP3, lokalni nadomestni strežnik za preizkus pa WAV; vrsto preberemo iz glave datoteke
+function audioType(file) {
+  const head = Buffer.alloc(4);
+  const fd = fs.openSync(file, 'r');
+  fs.readSync(fd, head, 0, 4, 0);
+  fs.closeSync(fd);
+  return head.toString('latin1') === 'RIFF' ? 'audio/wav' : 'audio/mpeg';
+}
 
 const getGeneration = db.prepare('SELECT * FROM generations WHERE id = ?');
 const getChild = db.prepare('SELECT * FROM children WHERE id = ?');
@@ -19,8 +34,11 @@ const insertAnimation = db.prepare(`
   VALUES (?, ?, ?, ?, ?)
 `);
 
-// Dvojni klik ali dva zavihka hkrati ne smeta dvakrat plačati iste animacije
+const addVoiceChars = db.prepare('UPDATE animations SET voice_chars = voice_chars + ? WHERE generation_id = ?');
+
+// Dvojni klik ali dva zavihka hkrati ne smeta dvakrat plačati iste animacije ali posnetka
 const pendingAnimations = new Map();
+const pendingAudio = new Map();
 
 function loadAccessible(req, res) {
   const generation = getGeneration.get(Number(req.params.id));
@@ -55,7 +73,7 @@ router.post('/:id/animation', requireAuth, async (req, res) => {
   const { generation, child } = found;
 
   const cached = getAnimation.get(generation.id);
-  if (cached) return res.json({ animation: JSON.parse(cached.content_json) });
+  if (cached) return res.json({ animation: JSON.parse(cached.content_json), voice: tts.isConfigured() });
 
   if (!pendingAnimations.has(generation.id)) {
     const job = generateAnimation({
@@ -72,12 +90,47 @@ router.post('/:id/animation', requireAuth, async (req, res) => {
   }
 
   try {
-    res.status(201).json({ animation: await pendingAnimations.get(generation.id) });
+    res.status(201).json({ animation: await pendingAnimations.get(generation.id), voice: tts.isConfigured() });
   } catch (err) {
     if (err instanceof GenerationError) return res.status(err.status).json({ error: err.message });
     console.error('Napaka pri animaciji:', err);
     res.status(500).json({ error: 'Animacije ni bilo mogoče pripraviti. Poskusi znova.' });
   }
+});
+
+// Glas za en prizor. Če Azure ni nastavljen ali ne odgovori, odjemalec razlago prebere z glasom naprave.
+router.get('/:id/animation/audio/:scene', requireAuth, async (req, res) => {
+  const found = loadAccessible(req, res);
+  if (!found) return;
+  const { generation } = found;
+
+  const index = Number(req.params.scene);
+  const cached = getAnimation.get(generation.id);
+  const scene = cached && Number.isInteger(index) && JSON.parse(cached.content_json).prizori[index];
+  if (!scene) return res.status(404).json({ error: 'Prizor ne obstaja.' });
+  if (!tts.isConfigured()) return res.status(503).json({ error: 'Glas ni nastavljen.' });
+
+  const file = path.join(AUDIO_DIR, String(generation.id), `${index}.mp3`);
+  if (!fs.existsSync(file)) {
+    if (!pendingAudio.has(file)) {
+      const job = tts
+        .synthesizeScene(scene)
+        .then(({ audio, chars }) => {
+          fs.mkdirSync(path.dirname(file), { recursive: true });
+          fs.writeFileSync(file, audio);
+          addVoiceChars.run(chars, generation.id);
+        })
+        .finally(() => pendingAudio.delete(file));
+      pendingAudio.set(file, job);
+    }
+    try {
+      await pendingAudio.get(file);
+    } catch (err) {
+      console.error('Napaka pri glasu:', err.message);
+      return res.status(503).json({ error: 'Glasu trenutno ni mogoče pripraviti.' });
+    }
+  }
+  res.type(audioType(file)).sendFile(file);
 });
 
 router.post('/:id/quiz-results', requireAuth, (req, res) => {
